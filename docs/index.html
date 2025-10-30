@@ -22,7 +22,7 @@
   <style>
     body {
       text-align: center;
-      background-color: #f0f0f0;
+      background-color: #ffffff;
       /* Optional: Set a background color for better visibility */
     }
 
@@ -156,15 +156,37 @@
                 </path>
               </svg><!-- <i class="fab fa-github"></i> Font Awesome fontawesome.com -->
             </span>
-            <span>Code</span>
+            <span>Code (Coming Soon)</span>
           </a>
         </span>
       </div>
     </div>
 
 
-    <h1>Abstract</h1>
     <div class="parent-video-compare-container" id="abstract">
+      
+
+      <h1></h1>
+      <!-- Caption. -->
+      <div class="columns is-centered has-text-centered">
+        <!-- <div class="column is-four-fifths"> -->
+        <div class="column is-full-width">
+            <img src="./resources/images/asset_teaser.png" alt="icon">
+        </div>
+      </div>
+      <h2 class=" subtitle has-text-centered has-text-justified" style="padding-top: 0px">
+        <p style="font-size: 75%;">
+        We present an attention-based architecture for hierarchical part abstraction of 
+        3D objects. Our model flexibly adapts the number of parts, without supervision, 
+        allowing semantically similar regions (e.g. chair legs) to be decomposed, 
+        through the hierarchies, into different numbers of child parts depending on their 
+        geometry. While the resulting parts at finer levels of abstractions may no longer 
+        be semantic (e.g., split of the chair seats), part correspondences between shapes 
+        remain meaningful at different levels of the hierarchies.
+        </p>
+      </h2>
+      <h1>Abstract</h1>
+
       <p class="justified">
         We introduce HiT, a novel hierarchical neural field representation for 3D shapes that 
         learns general hierarchies in a coarse-to-fine manner across different shape categories 
@@ -181,26 +203,6 @@
         effectiveness through an unsupervised shape segmentation task over all 55 ShapeNet categories, 
         where our method successfully segments shapes into multiple levels of granularity.
       </p>
-
-      <h1>Teaser</h1>
-      <!-- Caption. -->
-      <div class="columns is-centered has-text-centered">
-        <!-- <div class="column is-four-fifths"> -->
-        <div class="column is-full-width">
-            <img src="./resources/images/asset_teaser.png" alt="icon">
-        </div>
-      </div>
-      <h2 class=" subtitle has-text-centered has-text-justified" style="padding-top: 0px">
-        <p style="font-size: 90%;">
-        We present an attention-based architecture for hierarchical part abstraction of 
-        3D objects. Our model flexibly adapts the number of parts, without supervision, 
-        allowing semantically similar regions (e.g. chair legs) to be decomposed, 
-        through the hierarchies, into different numbers of child parts depending on their 
-        geometry. While the resulting parts at finer levels of abstractions may no longer 
-        be semantic (e.g., split of the chair seats), part correspondences between shapes 
-        remain meaningful at different levels of the hierarchies.
-        </p>
-      </h2>
       <!--/ Caption. -->
       </div>
     </div>
