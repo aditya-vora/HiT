@@ -1,2 +1,6 @@
 .DS_Store
 docs/.DS_Store
+exp/
+__pycache__
+.ninja_deps
+.ninja_log

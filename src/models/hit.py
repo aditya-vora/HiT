@@ -1,19 +1,26 @@
 import torch
 import torch.nn as nn 
 from dataclasses import dataclass
+from typing import List
 
 from config import Config
 from src.models.pointnet import PointNet
 
 @dataclass
 class ModelArgs:
-    pf_dim: int
-    zf_dim: int
-    tf_dim: int
-    ef_dim: int
-    gf_dim: int
-    planef_dim: int
-    n_planes: int
+    pf_dim: int = 3
+    zf_dim: int = 512
+    tf_dim: int = 4
+    ef_dim: int = 256
+    gf_dim: int = 256
+
+    nparts: List[int] = [8, 16, 32]
+    nlevels: int = 3
+    nplanes: int = 32 
+    mask_mode: str = "mask"
+    planef_dim: int = 8
+
+
 
 class PT_HiTModel_PointNet(nn.Module):
     def __init__(self, config: ModelArgs) -> None:
@@ -35,7 +42,9 @@ class PT_HiTModel_PointNet(nn.Module):
             use_bn=False
         )
 
-        
+        self.decoder = HiTDecoder(config)
+
+
 
     def forward(self, x):
         x = self.input_layer(x)

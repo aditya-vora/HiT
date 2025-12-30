@@ -15,7 +15,7 @@ from config import *
 from utils.distributed import init_distributed_mode
 from utils.logger import create_logger
 from utils import *
-from src.models.hit import HiTModel
+# from src.models.hit import HiTModel
 
 
 
@@ -59,9 +59,7 @@ def main(config: Config):
     # training env
     logger.info(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
-    model = HiTModel(
-        config
-    )
+    model = HiTModel(config)
 
     pass
 
