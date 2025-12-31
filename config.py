@@ -1,6 +1,6 @@
 import argparse 
 from typing import List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 def parse_args():
     parser = argparse.ArgumentParser(description="PyTorch HiT Training")
@@ -10,7 +10,6 @@ def parse_args():
     parser.add_argument("--global_batch_size", type=int, default=24, help="Batch size")
     parser.add_argument("--pts-per-shape", type=int, default=4096, help="Number of points per shape.")
     parser.add_argument("--npc", type=int, default=2048, help="Number of points in the point cloud.")
-    parser.add_argument("--ckpt-path", type=str, default="/mnt/data/ava/hit/per_cat_exp/objaverse/version_0/pth_checkpoints/epoch_18999.pth", help="Directory for saving checkpoints")
     parser.add_argument("--exp-dir", type=str, default="/mnt/data/ava/hit/per_cat_exp", help="Directory for saving experiments")
     parser.add_argument("--exp-name", type=str, default="sample", help="Directory for saving experiments")
     parser.add_argument("--random-seed", type=int, default=42, help="Random seed")
@@ -40,7 +39,6 @@ def parse_args():
     parser.add_argument("--nparts", type=int, nargs='+', default=[8,16,36], help="Number of parts")
     # parser.add_argument("--prog_interval", type=List[int], default=[2,4,8,12], help="Interval for progress logging")
     parser.add_argument("--nlevels", type=int, default=3, help="Number of levels")
-
     parser.add_argument("--nplanes", type=int, default=32, help="Number of planes")
     parser.add_argument("--plane-fdim", type=int, default=8, help="Plane feature dimension")
     parser.add_argument("--pf-dim", type=int, default=3, help="Input dimension")
@@ -48,6 +46,7 @@ def parse_args():
     parser.add_argument("--tf-dim", type=int, default=4, help="Token dimension")
     parser.add_argument("--ef-dim", type=int, default=256, help="Encoder dimension")
     parser.add_argument("--gf-dim", type=int, default=256, help="generator dimension")
+    parser.add_argument("--model-type", type=str, default="hit-volume", help="Model name")
     # parser.add_argument("--density", type=int, default=32, help="Density of the point cloud")
     # parser.add_argument("--nchunks", type=int, default=8, help="Number of chunks")
     # parser.add_argument("--mcubeth", type=int, default=0.5, help="Cube size")
@@ -63,22 +62,30 @@ def parse_args():
     # parser.add_argument("--w_balance_loss", type=float, default=0.01, help="Weight for balance loss.")
     # parser.add_argument("--w_containment_loss", type=float, default=0.01, help="Weight for containment loss")
 
-    # parser.add_argument("--mask_mode", type=str, default="mask", help="Model name")
+    parser.add_argument("--mask-mode", type=str, default="mask", help="Model name")
 
     args = parser.parse_args()
 
     config = Config(
+        epochs=args.epochs,
+        lr=args.lr,
         global_batch_size=args.global_batch_size,
-        random_seed=args.random_seed,
+        pts_per_shape=args.pts_per_shape,
+        npc=args.npc,
         exp_dir=args.exp_dir,
         exp_name=args.exp_name,
+        random_seed=args.random_seed,
         pf_dim=args.pf_dim,
         zf_dim=args.zf_dim,
         tf_dim=args.tf_dim,
         ef_dim=args.ef_dim,
         gf_dim=args.gf_dim,
         planef_dim=args.plane_fdim,
-        n_planes=args.nplanes
+        n_planes=args.nplanes,
+        n_levels=args.nlevels,
+        n_parts=args.nparts,
+        model_type=args.model_type,
+        mask_mode=args.mask_mode
     )
 
     return config
@@ -86,15 +93,25 @@ def parse_args():
 
 @dataclass
 class Config:
+    epochs: int = 150
+    lr: float = 0.0001
     global_batch_size: int = 64
-    random_seed: int = 42
+    pts_per_shape: int = 4096
+    npc: int = 2048
     exp_dir: str = "./exp"
     exp_name: str = "example"
+    random_seed: int = 42
 
     pf_dim: int = 3
     zf_dim: int = 512
     tf_dim: int = 4
     ef_dim: int = 256
     gf_dim: int = 256
+
     planef_dim: int = 8
     n_planes: int = 32
+    n_levels: int = 3
+    n_parts: List[int] = field(default_factory=lambda: [8, 16, 36])
+
+    model_type: str = "hit-volume"
+    mask_mode: str = "mask" 

@@ -5,7 +5,7 @@ import math
 from typing import Tuple, List
 from einops import repeat
 
-from src.models.modules import PointnetSAModule, PointnetFPModule
+# from src.models.modules import PointnetSAModule, PointnetFPModule
 
 class PointNet(nn.Module):
     """Some Information about PointNetCapsule"""
