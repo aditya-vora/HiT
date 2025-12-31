@@ -9,6 +9,7 @@ from config import Config
 from src.models.pointnet import PointNet
 from src.models.conv_occnet import LocalPoolPointnet
 from src.models.modules import TransformerBlock
+from src.models.cvx_decoder import MultiConvexImplicitDecoder
 
 @dataclass
 class ModelArgs:
@@ -82,14 +83,12 @@ class HiTDecoder(nn.Module):
     def __init__(
             self,
             pf_dim:int=3,
-            tf_dim:int=64,
             zf_dim:int=32,
-            gf_dim:int=64,
             planef_dim: int=4,
             n_parts: List[int]=[3,9,27],
             n_planes: int=128,
             mask_mode: str="normal",    
-            ) -> None:
+        ) -> None:
         super(HiTDecoder, self).__init__()
         """HiT Decoder Defination
         
@@ -106,51 +105,33 @@ class HiTDecoder(nn.Module):
             None
         """
 
-        self.planef_dim = planef_dim
-        self.n_planes = n_planes
-        self.inf_dim = pf_dim
-        self.zf_dim = zf_dim
+        self.planef_dim, self.n_planes, self.pf_dim, self.zf_dim, self.n_parts = planef_dim, n_planes, pf_dim, zf_dim, n_parts
 
-        self.convex_codebooks, self.token_attn_blocks, self.attn_blocks, self.multiconvex_decoder = nn.ModuleList([]), nn.ModuleList([]), nn.ModuleList([]), nn.ModuleList([])
+        self.codebook = nn.ModuleList([])
+        self.token_attn_blocks = nn.ModuleList([])
+        self.attn_blocks = nn.ModuleList([])
+        self.multiconvex_decoder = nn.ModuleList([])
 
-        self.n_parts = n_parts
-                
-        for i in range(len(self.n_parts)):         
-            convex_codebook_kwargs = {
-                'nconvexs': self.n_parts[i],
-                'zf_dim': zf_dim,
-                'nhead': 1,
-            }
-            self.convex_codebooks.append(ConvexDecoderV2(**convex_codebook_kwargs))          
-
-            # self.multiconvex_decoder.append(MultiConvexImplicitDecoder(
-            #     n_points=n_points,
-            #     n_query_points=n_query_pts,
-            #     zf_dim=zf_dim,
-            #     inf_dim=inf_dim,
-            #     n_planes=nplanes,
-            #     planef_dim=planef_dim,
-            # ))
-        
+        self.codebook.append(
+            ConvexDecoder(
+                n_convexs=self.n_parts[i], 
+                zf_dim=zf_dim, 
+                n_head=1
+            ) for i in range(len(self.n_parts)))
+                        
         self.multiconvex_decoder = MultiConvexImplicitDecoder(
-            n_points=n_points,
-            n_query_points=n_query_pts,
             zf_dim=zf_dim,
-            inf_dim=inf_dim,
-            n_planes=nplanes,
+            pf_dim=pf_dim,
+            n_planes=n_planes,
             planef_dim=planef_dim,
         )
- 
 
-        self.num_active_blocks = len(self.mparts)
-
+        self.num_active_blocks = len(self.n_parts)
         self.mask_mode = mask_mode 
 
-
     def increase_active_blocks(self):
-        if self.num_active_blocks < len(self.mparts):
+        if self.num_active_blocks < len(self.n_parts):
             self.num_active_blocks += 1
-
 
     def _get_attention_matrix(self, feats: torch.Tensor) -> torch.Tensor:
         B = feats.shape[0]
@@ -450,6 +431,7 @@ def HiTModelPointNet(**kwargs) -> nn.Module:
     """function to create a HiTModelPointNet instance."""
     model = PT_HiTModel_PointNet(ModelArgs(**kwargs))
     return model
+
 
 def HiTModelTable(**kwargs) -> nn.Module:
     """function to create a HiTModelTable instance."""
