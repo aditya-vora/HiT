@@ -5,24 +5,15 @@
 
 This repository contains the official implementation of [HiT: Hierarchical Transformers for Unsupervised 3D Shape Abstraction](https://aditya-vora.github.io/HiT/).
 
-<!-- The code includes scripts for training and evaluation, as well as a real-time viewer that can be used to visualize trained models, or optionally to observe the progression of models as they train. Everything in this repository is non-final and subject to change as the project is still being actively developed. **We encourage anyone citing our results to do as RadFoam (vx), where x is the version specified for those metrics in the paper or tagged to a commit on GitHub.** This should hopefully reduce confusion.
-
-Warning: this is an organic, free-range research codebase, and should be treated with the appropriate care when integrating it into any other software.
-
-## Known issues
- - GPU memory usage can be high for scenes with many points. You may need to reduce the `final_points` setting to train outdoor scenes on a 24GB GPU. This will hopefully be improved the future.
- - Best PSNR is acheived with the default softplus density activation, but also it causes an increase in volumetric artifacts. Using exponential activation may result in qualitatively better renders. We are planning to add configuration options for this.
- - The Delaunay triangulation is not perfectly robust, and relies on random perturbation of points and iterative retries to attempt to recover from failures. Training may stall for long periods when this occurs.
-
 ## Getting started
 
-Start by cloning the repository and submodules:
+Start by cloning the repository:
 
-    git clone --recursive https://github.com/theialab/radfoam
+    git clone https://github.com/aditya-vora/HiT
 
-You will need a Linux environment with Python 3.10 or newer, as well as version 12.x of the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) and a CUDA-compatible GPU of Compute Capability 7.0 or higher. Please ensure that your installation method for CUDA places `nvcc` in your `PATH`. The following instructions were tested with Ubuntu 24.04.
+You will need a Linux environment with Python 3.10 or newer, as well as version 12.x of the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). Ensure that CUDA >=12.8 is installed in case using RTX 5090.
 
-After installing the CUDA Toolkit and initializing your python virtual environment, install PyTorch 2.3 or newer. For example, with CUDA 12.1:
+<!-- After installing the CUDA Toolkit and initializing your python virtual environment, install PyTorch 2.3 or newer. For example, with CUDA 12.1:
 
     pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu121
 
@@ -84,4 +75,4 @@ You can find trained checkpoints, as well as COLMAP output for some scenes [here
         title = {Radiant Foam: Real-Time Differentiable Ray Tracing},
         journal = {arXiv:2502.01157},
         year = {2025},
-    } -->
+    } --> -->
