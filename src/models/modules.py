@@ -6,6 +6,82 @@ from typing import Tuple, List
 
 # import src.libs.pointnet2.pointnet2_utils as pointnet2_utils
 
+class MultiheadAttention(nn.Module):
+    def __init__(self, d_model: int=32, nhead: int=8) -> None:
+        super(MultiheadAttention, self).__init__()
+        self.d_model = d_model
+        self.nhead = nhead
+        self.head_dim = d_model // nhead
+
+        self.q_linear = nn.Linear(d_model, d_model)
+        self.k_linear = nn.Linear(d_model, d_model)
+        self.v_linear = nn.Linear(d_model, d_model)
+        self.out_linear = nn.Linear(d_model, d_model)
+
+        self.scores = None
+
+    def forward(self, x: torch.Tensor, context: torch.Tensor, mask: torch.Tensor=None, logit_mask=None) -> Tuple[torch.Tensor, torch.Tensor]:
+        batch_size = x.size(0)
+
+        # Linear transformations
+        q = self.q_linear(x)
+        k = self.k_linear(context)
+        v = self.v_linear(context)
+
+        # Reshape for multi-head attention
+        q = q.view(batch_size, -1, self.nhead, self.head_dim).transpose(1, 2)
+        k = k.view(batch_size, -1, self.nhead, self.head_dim).transpose(1, 2)
+        v = v.view(batch_size, -1, self.nhead, self.head_dim).transpose(1, 2)
+
+        # Scaled dot-product attention
+        scores = q @ k.transpose(-2, -1) / np.sqrt(k.size(-1))
+        if mask is not None:
+            mask = mask[:, None, None, :].float()
+            scores -= 1000000.0 * (1.0 - mask)
+        elif logit_mask is not None:
+            mask = logit_mask[:, None, :, :]
+            attention_weights = torch.softmax(scores * mask, dim=-1)
+        else:
+            attention_weights = torch.softmax(scores, dim=-1)
+        
+        attention_output = torch.matmul(attention_weights, v)
+
+        # Reshape and linear transformation for output
+        attention_output = attention_output.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
+        output = self.out_linear(attention_output)
+        return (output, attention_weights)
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, d_model: int=32, nhead: int=8, dim_feedforward: int=128, dropout: float=0.0) -> None:
+        super(TransformerBlock, self).__init__()
+        self.attn = MultiheadAttention(d_model=d_model, nhead=nhead)
+        
+        self.feed_forward = nn.Sequential(
+            nn.Linear(d_model, dim_feedforward),
+            nn.ReLU(),
+            nn.Linear(dim_feedforward, d_model)
+        )
+        self.dropout = nn.Dropout(dropout)
+        self.layer_norm1 = nn.LayerNorm(d_model)
+        self.layer_norm2 = nn.LayerNorm(d_model)
+
+    def forward(self, x, tokens, mask=None, logit_mask=None):
+        # Self-attention
+        attn_output, scores = self.attn(x, tokens, mask, logit_mask)
+
+        # attn_output = self.self_attention(x, tokens, knn_idx)
+        x = x + self.dropout(attn_output)
+        x = self.layer_norm1(x)
+
+        # Feed-forward network
+        ff_output = self.feed_forward(x)
+        x = x + self.dropout(ff_output)
+        x = self.layer_norm2(x)
+
+        return x, scores
+
+
 # UNet3D utils.
 def coordinate2index(x, reso, coord_type='2d'):
     ''' Normalize coordinate to [0, 1] for unit cube experiments.
