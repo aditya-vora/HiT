@@ -4,3 +4,4 @@ exp/
 __pycache__
 .ninja_deps
 .ninja_log
+.DS_Store
