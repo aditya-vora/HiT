@@ -10,6 +10,7 @@ from src.models.pointnet import PointNet
 from src.models.conv_occnet import LocalPoolPointnet
 from src.models.modules import TransformerBlock
 from src.models.cvx_decoder import MultiConvexImplicitDecoder
+from utils.model import normalize_3d_coordinate
 
 @dataclass
 class ModelArgs:
