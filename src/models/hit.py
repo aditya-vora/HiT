@@ -9,7 +9,7 @@ from config import Config
 from src.models.pointnet import PointNet
 from src.models.conv_occnet import LocalPoolPointnet
 from src.models.modules import TransformerBlock
-from src.models.cvx_decoder import MultiConvexImplicitDecoder
+from src.models.cvx_decoder import PartParameterization
 from utils.model import normalize_3d_coordinate
 
 @dataclass
@@ -33,7 +33,7 @@ class ModelArgs:
     planef_dim: int = 8
 
 
-class ConvexDecoder(nn.Module):
+class HierarchicalPartsTransformer(nn.Module):
     """Convex Decoder with embeddings
     Args:
         n_convexs: Number of convex shapes to map the planes to
@@ -43,7 +43,7 @@ class ConvexDecoder(nn.Module):
         ConvexDecoder module
     """
     def __init__(self, n_convexs: int=3, n_head: int=8, zf_dim: int=4) -> None:
-        super(ConvexDecoder, self).__init__()
+        super(HierarchicalPartsTransformer, self).__init__()
         
         self.convex_layer_embeddings = nn.Embedding(n_convexs, zf_dim)
         self.attn = TransformerBlock(
@@ -114,13 +114,13 @@ class HiTDecoder(nn.Module):
         self.multiconvex_decoder = nn.ModuleList([])
 
         self.codebook.append(
-            ConvexDecoder(
+            HierarchicalPartsTransformer(
                 n_convexs=self.n_parts[i], 
                 zf_dim=zf_dim, 
                 n_head=1
             ) for i in range(len(self.n_parts)))
                         
-        self.multiconvex_decoder = MultiConvexImplicitDecoder(
+        self.multiconvex_decoder = PartParameterization(
             zf_dim=zf_dim,
             pf_dim=pf_dim,
             n_planes=n_planes,
@@ -402,17 +402,6 @@ class PT_HiTModel_ConvOccNet(nn.Module):
             unet3d=True
         )
 
-        kwargs = {
-            'planef_dim': config.planef_dim,
-            'pf_dim': config.pf_dim,
-            'tf_dim': config.tf_dim,
-            'zf_dim': config.zf_dim,
-            'gf_dim': config.gf_dim,
-            'n_parts': config.n_parts,
-            'n_planes': config.n_planes,
-            'mask_mode': config.mask_mode,
-        }
-
         self.decoder = HiTDecoder(
             pf_dim=config.pf_dim,
             tf_dim=config.tf_dim,
@@ -422,10 +411,13 @@ class PT_HiTModel_ConvOccNet(nn.Module):
             n_parts=config.n_parts,
             n_planes=config.n_planes,
         )
-    def forward(self, x):
-        # Define forward pass for ConvOccNet here
-        # Placeholder for actual implementation
-        return x
+
+        self.enc_type = "volume"
+
+    def forward(self, pc: torch.Tensor, qpts: torch.Tensor, file_ids: torch.Tensor=None) -> Dict[str, torch.Tensor]:    
+        feats = self.encoder(pc)
+        data = self.decoder(qpts, pc, feats, enc_type=self.enc_type)
+        return data
 
 
 def HiTModelPointNet(**kwargs) -> nn.Module:

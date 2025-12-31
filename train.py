@@ -57,18 +57,18 @@ def main(config: Config):
     # training env
     logger.info(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
-    model = HiT_models[config.model_type](
-        pf_dim=config.pf_dim,
-        zf_dim=config.zf_dim,
-        tf_dim=config.tf_dim,
-        ef_dim=config.ef_dim,
-        gf_dim=config.gf_dim,
-        n_parts=config.n_parts,
-        n_levels=config.n_levels,
-        n_planes=config.n_planes,
-        planef_dim=config.planef_dim,
-        mask_mode=config.mask_mode
-    )
+    # model = HiT_models[config.model_type](
+    #     pf_dim=config.pf_dim,
+    #     zf_dim=config.zf_dim,
+    #     tf_dim=config.tf_dim,
+    #     ef_dim=config.ef_dim,
+    #     gf_dim=config.gf_dim,
+    #     n_parts=config.n_parts,
+    #     n_levels=config.n_levels,
+    #     n_planes=config.n_planes,
+    #     planef_dim=config.planef_dim,
+    #     mask_mode=config.mask_mode
+    # )
 
     logger.info(f"Model Encoder Parameters: {sum(p.numel() for p in model.encoder.parameters()):,}")
     logger.info(f"Model Encoder Trainable Parameters: {sum(p.numel() for p in model.encoder.parameters() if p.requires_grad == True):,}")

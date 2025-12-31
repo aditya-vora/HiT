@@ -7,7 +7,7 @@ from typing import Tuple
 
 from utils.model import convert_euler_angles_to_rotation_matrix
 
-class MultiConvexImplicitDecoder(nn.Module):
+class PartParameterization(nn.Module):
     """Multi Convex Implicit Decoder
     Args:
         :param npoints: Number of points in the point cloud
@@ -24,7 +24,7 @@ class MultiConvexImplicitDecoder(nn.Module):
             n_planes: int=32,
             planef_dim: int=4, 
             ) -> None:
-        super(MultiConvexImplicitDecoder, self).__init__()
+        super(PartParameterization, self).__init__()
 
         self.zf_dim = zf_dim 
         self.pf_dim = pf_dim
