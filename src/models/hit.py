@@ -46,12 +46,7 @@ class HierarchicalPartsTransformer(nn.Module):
         super(HierarchicalPartsTransformer, self).__init__()
         
         self.convex_layer_embeddings = nn.Embedding(n_convexs, zf_dim)
-        self.attn = TransformerBlock(
-            d_model=zf_dim, 
-            nhead=n_head, 
-            dim_feedforward=4*zf_dim, 
-            dropout=0.0
-        )
+        self.attn = TransformerBlock(d_model=zf_dim, nhead=n_head, dim_feedforward=4*zf_dim, dropout=0.0)
     
     def forward(self, per_point_planes: torch.Tensor = None, scores: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -83,8 +78,10 @@ class HierarchicalPartsTransformer(nn.Module):
 class HiTDecoder(nn.Module):
     def __init__(
             self,
-            pf_dim:int=3,
-            zf_dim:int=32,
+            pf_dim: int=3,
+            zf_dim: int=32,
+            tf_dim: int=4,
+            gf_dim: int=256,
             planef_dim: int=4,
             n_parts: List[int]=[3,9,27],
             n_planes: int=128,
@@ -108,17 +105,19 @@ class HiTDecoder(nn.Module):
 
         self.planef_dim, self.n_planes, self.pf_dim, self.zf_dim, self.n_parts = planef_dim, n_planes, pf_dim, zf_dim, n_parts
 
-        self.codebook = nn.ModuleList([])
         self.token_attn_blocks = nn.ModuleList([])
         self.attn_blocks = nn.ModuleList([])
         self.multiconvex_decoder = nn.ModuleList([])
-
-        self.codebook.append(
-            HierarchicalPartsTransformer(
-                n_convexs=self.n_parts[i], 
-                zf_dim=zf_dim, 
-                n_head=1
-            ) for i in range(len(self.n_parts)))
+        
+        self.part_blocks = nn.ModuleList(
+            [
+                HierarchicalPartsTransformer(
+                    n_convexs=self.n_parts[i], 
+                    zf_dim=zf_dim, 
+                    n_head=1
+                ) for i in range(len(self.n_parts))
+            ]
+        )
                         
         self.multiconvex_decoder = PartParameterization(
             zf_dim=zf_dim,
@@ -410,6 +409,7 @@ class PT_HiTModel_ConvOccNet(nn.Module):
             planef_dim=config.planef_dim,
             n_parts=config.n_parts,
             n_planes=config.n_planes,
+            mask_mode=config.mask_mode
         )
 
         self.enc_type = "volume"

@@ -5,8 +5,7 @@ from torch_scatter import scatter_max, scatter_mean
 
 from src.models.modules import ResnetBlockFC
 from src.models.unet3d import UNet3D
-from src.models.modules import coordinate2index, normalize_coordinate, normalize_3d_coordinate
-
+from utils.model import coordinate2index, normalize_coordinate, normalize_3d_coordinate
 
 class LocalPoolPointnet(nn.Module):
     ''' PointNet-based encoder network with ResNet blocks for each point.
