@@ -16,7 +16,7 @@ class LossConfig:
     n_parts: List[int] = field(default_factory=lambda: [8,16,36])
 
 @dataclass
-class Config:
+class TrainConfig:
     epochs: int = 150
     lr: float = 0.0001
     global_batch_size: int = 64
@@ -26,6 +26,8 @@ class Config:
     exp_name: str = "example"
     random_seed: int = 42
 
+@dataclass
+class ModelConfig: 
     pf_dim: int = 3
     zf_dim: int = 512
     tf_dim: int = 4
@@ -40,6 +42,8 @@ class Config:
     model_type: str = "hit-volume"
     mask_mode: str = "mask" 
 
+@dataclass 
+class DataConfig: 
     data_dir: str = "/mnt/data/ava/hit/data/objaverse"
     dataset_name: str = "objaverse"
     cats: str = "objaverse"
@@ -47,8 +51,7 @@ class Config:
     cats_list: List[str] = field(default_factory=list)
     splits: List[str] = field(default_factory=lambda: ["train", "val"])
 
-
-def parse_args() -> Tuple[Config, LossConfig]:
+def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     parser = argparse.ArgumentParser(description="PyTorch HiT Training")
     
     parser.add_argument("--epochs", type=int, default=150, help="Number of epochs")
@@ -72,13 +75,6 @@ def parse_args() -> Tuple[Config, LossConfig]:
     parser.add_argument("--mesh", action="store_true", help="Output mesh with segmentation")
     parser.add_argument("--iou", action="store_true", help="Output IOU for test shapes")
     parser.add_argument("--cd", action="store_true", help="Output chamfer distance for test shapes")
-    # parser.add_argument("--finetune", action="store_true", help="Enable finetuning mode")   
-    # parser.add_argument("--vis_cvx", action="store_true", help="Enable visualization of convex hulls")
-    # parser.add_argument("--finetune_cat", action="store_true", help="Category for finetuning")
-    # parser.add_argument("--vis_attn", action="store_true", help="Enable attention visualization")
-
-    # parser.add_argument("--gpu_id", type=int, default=0, help="GPU to use")
-    # parser.add_argument("--num_workers", type=int, default=8, help="Number of workers for data loading")
 
     # parser.add_argument("--log_data", type=int, default=100, help="Directory for saving log data")
     # parser.add_argument("--log_model", type=int, default=1000, help="Directory for saving log model")
@@ -112,15 +108,15 @@ def parse_args() -> Tuple[Config, LossConfig]:
 
     args = parser.parse_args()
 
-    config = Config(
-        epochs=args.epochs,
-        lr=args.lr,
-        global_batch_size=args.global_batch_size,
-        pts_per_shape=args.pts_per_shape,
-        npc=args.npc,
-        exp_dir=args.exp_dir,
-        exp_name=args.exp_name,
-        random_seed=args.random_seed,
+    dataconfig = DataConfig(
+        data_dir=args.data_dir,
+        dataset_name=args.dataset_name,
+        cats=args.cats,
+        splits=args.splits,
+        shape_id=args.shape_id
+    )
+
+    modelconfig = ModelConfig(
         pf_dim=args.pf_dim,
         zf_dim=args.zf_dim,
         tf_dim=args.tf_dim,
@@ -131,12 +127,18 @@ def parse_args() -> Tuple[Config, LossConfig]:
         n_levels=args.nlevels,
         n_parts=args.nparts,
         model_type=args.model_type,
-        mask_mode=args.mask_mode,
-        data_dir=args.data_dir,
-        dataset_name=args.dataset_name,
-        cats=args.cats,
-        splits=args.splits,
-        shape_id=args.shape_id
+        mask_mode=args.mask_mode
+    )
+
+    trainconfig = TrainConfig(
+        epochs=args.epochs,
+        lr=args.lr,
+        global_batch_size=args.global_batch_size,
+        pts_per_shape=args.pts_per_shape,
+        npc=args.npc,
+        exp_dir=args.exp_dir,
+        exp_name=args.exp_name,
+        random_seed=args.random_seed
     )
 
     loss_config = LossConfig(
@@ -152,4 +154,4 @@ def parse_args() -> Tuple[Config, LossConfig]:
         n_parts=args.nparts,
     )
 
-    return (config, loss_config)
+    return (dataconfig, modelconfig, trainconfig, loss_config)

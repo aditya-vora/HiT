@@ -2,7 +2,7 @@ import os
 import torch
 import subprocess
 from loguru import logger
-from config import Config
+from config import TrainConfig
 
 def setup_for_distributed(is_master):
     """
@@ -18,11 +18,11 @@ def setup_for_distributed(is_master):
 
     __builtin__.print = print
     
-def init_distributed_mode(args: Config):
+def init_distributed_mode(args: TrainConfig):
     """Setup distributed training mode
 
     Args:
-        args (Config): Input training configuration dataclass. Contains distributed training parameters.
+        args (TrainConfig): Input training configuration dataclass. Contains distributed training parameters.
     """
     
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
