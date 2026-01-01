@@ -18,6 +18,7 @@ from utils import *
 # from src.models.hit import HiTModel
 from src.models.hit import HiT_models
 from src.loss import Loss
+from dataset.build import build_dataset
 
 
 #################################################################################
@@ -26,37 +27,37 @@ from src.loss import Loss
 def main(config: Config, loss_config: LossConfig): 
     assert torch.cuda.is_available(), "Training currently requires at least one GPU."
 
-    # # Setup DDP:
-    # init_distributed_mode(config)
+    # Setup DDP:
+    init_distributed_mode(config)
     
-    # assert config.global_batch_size % dist.get_world_size() == 0, f"Batch size must be divisible by world size."
-    # rank = dist.get_rank()
+    assert config.global_batch_size % dist.get_world_size() == 0, f"Batch size must be divisible by world size."
+    rank = dist.get_rank()
     
-    # # you get the device from ddp
-    # device = rank % torch.cuda.device_count()    
-    # if rank == 0: 
-    #     pprint.pprint(config)
+    # you get the device from ddp
+    device = rank % torch.cuda.device_count()    
+    if rank == 0: 
+        pprint.pprint(config)
         
-    # # set device and random seed
-    # seed = config.random_seed * dist.get_world_size() + rank
-    # torch.manual_seed(seed)
-    # torch.cuda.set_device(device)
+    # set device and random seed
+    seed = config.random_seed * dist.get_world_size() + rank
+    torch.manual_seed(seed)
+    torch.cuda.set_device(device)
 
-    # # Setup an experiment folder:
-    # checkpoint_dir = None
-    # if rank == 0:
-    #     experiment_dir = setup_experiment_directory(base_dir=config.exp_dir, exp_name=config.exp_name)
-    #     checkpoint_dir = make_path_and_dir(folders=[experiment_dir, "checkpoints"])
-    #     logger = create_logger(experiment_dir, filename='log', mode="ddp")
-    #     logger.info(f"Experiment directory created at {experiment_dir}")
-    # else:
-    #     logger = create_logger(None, None, mode="ddp")
+    # Setup an experiment folder:
+    checkpoint_dir = None
+    if rank == 0:
+        experiment_dir = setup_experiment_directory(base_dir=config.exp_dir, exp_name=config.exp_name)
+        checkpoint_dir = make_path_and_dir(folders=[experiment_dir, "checkpoints"])
+        logger = create_logger(experiment_dir, filename='log', mode="ddp")
+        logger.info(f"Experiment directory created at {experiment_dir}")
+    else:
+        logger = create_logger(None, None, mode="ddp")
 
-    # # training args
-    # logger.info(f"{config}")
+    # training args
+    logger.info(f"{config}")
 
-    # # training env
-    # logger.info(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
+    # training env
+    logger.info(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
     model = HiT_models[config.model_type](
         pf_dim=config.pf_dim,
@@ -88,13 +89,14 @@ def main(config: Config, loss_config: LossConfig):
         n_parts=loss_config.n_parts,
     ).to(device=device)
 
-
-    if config.cat == "all":
-        cats = read_text(f"{config.data_dir}/cats.txt")
+    if config.cats == "all":
+        config.cats_list = read_text(f"{config.data_dir}/cats.txt")
     else:
-        cats = [config.cat]
+        config.cats_list = [config.cats]
 
+    logger.info(f"Training on categories: {config.cats_list}")
 
+    dataset = build_dataset(config=config, mode="train")
     pass
 
 if __name__ == "__main__":

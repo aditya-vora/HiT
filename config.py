@@ -42,8 +42,10 @@ class Config:
 
     data_dir: str = "/mnt/data/ava/hit/data/objaverse"
     dataset_name: str = "objaverse"
-    cat: str = "objaverse"
+    cats: str = "objaverse"
     shape_id: str = "1ab3abb5c090d9b68e940c4e64a94e1e"
+    cats_list: List[str] = field(default_factory=list)
+    splits: List[str] = field(default_factory=lambda: ["train", "val"])
 
 
 def parse_args() -> Tuple[Config, LossConfig]:
@@ -58,17 +60,18 @@ def parse_args() -> Tuple[Config, LossConfig]:
     parser.add_argument("--exp-name", type=str, default="sample", help="Directory for saving experiments")
     parser.add_argument("--random-seed", type=int, default=42, help="Random seed")
 
-    parser.add_argument("--data-dir", type=str, default="/mnt/data/ava/hit/data/objaverse", help="Root directory of dataset")
-    parser.add_argument("--dataset-name", type=str, default="objaverse", help="Name of the dataset")
-    parser.add_argument("--cat", type=str, default="objaverse", help="Category of the object")
+    parser.add_argument("--data-dir", type=str, default="/localhome/ava40/Desktop/HiT/data_src/shapenet/shapenetv2.1", help="Root directory of dataset")
+    parser.add_argument("--dataset-name", type=str, default="shapenet", help="Name of the dataset")
+    parser.add_argument("--cats", type=str, default="all", help="Category of the object")
     parser.add_argument("--shape-id", type=str, default="1ab3abb5c090d9b68e940c4e64a94e1e", help="Shape ID of the object")
+    parser.add_argument("--splits", type=str, nargs='+', default=["train", "val"], help="Dataset splits to use")
 
-    # parser.add_argument("--train", action="store_true", help="Enable training mode")
-    # parser.add_argument("--recon", action="store_true", help="Output reconstructed shape with segmentation")
-    # parser.add_argument("--pointcloud", action="store_true", help="Output point cloud with segmentation")
-    # parser.add_argument("--mesh", action="store_true", help="Output mesh with segmentation")
-    # parser.add_argument("--iou", action="store_true", help="Output IOU for test shapes")
-    # parser.add_argument("--cd", action="store_true", help="Output chamfer distance for test shapes")
+    parser.add_argument("--train", action="store_true", help="Enable training mode")
+    parser.add_argument("--recon", action="store_true", help="Output reconstructed shape with segmentation")
+    parser.add_argument("--pointcloud", action="store_true", help="Output point cloud with segmentation")
+    parser.add_argument("--mesh", action="store_true", help="Output mesh with segmentation")
+    parser.add_argument("--iou", action="store_true", help="Output IOU for test shapes")
+    parser.add_argument("--cd", action="store_true", help="Output chamfer distance for test shapes")
     # parser.add_argument("--finetune", action="store_true", help="Enable finetuning mode")   
     # parser.add_argument("--vis_cvx", action="store_true", help="Enable visualization of convex hulls")
     # parser.add_argument("--finetune_cat", action="store_true", help="Category for finetuning")
@@ -129,6 +132,11 @@ def parse_args() -> Tuple[Config, LossConfig]:
         n_parts=args.nparts,
         model_type=args.model_type,
         mask_mode=args.mask_mode,
+        data_dir=args.data_dir,
+        dataset_name=args.dataset_name,
+        cats=args.cats,
+        splits=args.splits,
+        shape_id=args.shape_id
     )
 
     loss_config = LossConfig(

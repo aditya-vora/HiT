@@ -18,7 +18,7 @@ class Loss(nn.Module):
             n_levels: int = 3,
             n_parts: List[int] = [4, 16, 32],
         ) -> None:
-        super(LossCvx, self).__init__()
+        super(Loss, self).__init__()
 
         self._w_im_sample = w_im_sample_loss
         self._w_equilibrium = w_equilibrium_loss
