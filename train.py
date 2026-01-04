@@ -1,3 +1,4 @@
+import time
 import torch
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -87,6 +88,13 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
         n_parts=loss_config.n_parts,
     ).to(device=device)
 
+    # only optimize the vq model parameters. Currently a simple Adam optimizer is used.
+    optimizer = torch.optim.Adam( # type: ignore
+        params=model.parameters(), 
+        lr=train_config.lr, 
+        betas=(0.9, 0.95)
+    )
+
     if data_config.cats == "all":
         data_config.cats_list = read_text(f"{data_config.data_dir}/cats.txt")
     else:
@@ -122,19 +130,15 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
     logger.info(f"Read from: {data_config.data_dir}, Dataset contains {len(dataset):,} images.")
 
     # load the model from a checkpoint is training breaks.
-    if train_config.vq_ckpt != "":
-        checkpoint = torch.load(train_config.vq_ckpt, map_location="cpu")
+    if train_config.ckpt != "":
+        checkpoint = torch.load(train_config.ckpt, map_location="cpu")
         
-        vq_model.load_state_dict(checkpoint["model"])
-        train_steps = checkpoint["steps"] if "steps" in checkpoint else int(train_config.vq_ckpt.split('/')[-1].split('.')[0])
+        model.load_state_dict(checkpoint["model"])
+        train_steps = checkpoint["steps"] if "steps" in checkpoint else int(train_config.ckpt.split('/')[-1].split('.')[0])
         
-        if train_config.new_session:
-            train_steps = 0
-            start_epoch = 0
-        else:
-            start_epoch = int(train_steps / int(len(dataset) / train_config.global_batch_size))
-            train_steps = int(start_epoch * int(len(dataset) / train_config.global_batch_size))
-            optimizer.load_state_dict(checkpoint["optimizer"])
+        start_epoch = int(train_steps / int(len(dataset) / train_config.global_batch_size))
+        train_steps = int(start_epoch * int(len(dataset) / train_config.global_batch_size))
+        optimizer.load_state_dict(checkpoint["optimizer"])
 
         del checkpoint
         logger.info(f"Resume training from checkpoint: {train_config.vq_ckpt}")
@@ -143,13 +147,27 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
         train_steps = 0
         start_epoch = 0
            
-    vq_model = DDP(vq_model.to(device), device_ids=[getattr(train_config, "gpu")])
-    vq_model.train()
+    model = DDP(model.to(device), device_ids=[getattr(train_config, "gpu")])
+    model.train()
     
     # Variables for monitoring/logging purposes:
     log_steps = 0
     running_loss = 0
     start_time = time.time()
+
+    logger.info(f"Training for {train_config.epochs} epochs...")
+    for epoch in range(start_epoch, train_config.epochs):
+        sampler.set_epoch(epoch)
+        logger.info(f"Beginning epoch {epoch}...")
+        for i, data in enumerate(dataloader):           
+            # move data to device
+            querypts = data['querypts'].to(device, non_blocking=True)
+            occ = data['occgt'].to(device, non_blocking=True)
+            
+            optimizer.zero_grad()
+
+            print(querypts.shape, occ.shape)
+
 
 if __name__ == "__main__":
     dataconfig, modelconfig, trainconfig, lossconfig = parse_args()

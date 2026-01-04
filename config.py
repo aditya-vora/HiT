@@ -25,6 +25,8 @@ class TrainConfig:
     exp_dir: str = "./exp"
     exp_name: str = "example"
     random_seed: int = 42
+    ckpt: str = ""
+
 
 @dataclass
 class ModelConfig: 
@@ -68,6 +70,7 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     parser.add_argument("--exp-dir", type=str, default="/mnt/data/ava/hit/per_cat_exp", help="Directory for saving experiments")
     parser.add_argument("--exp-name", type=str, default="sample", help="Directory for saving experiments")
     parser.add_argument("--random-seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--ckpt", type=str, default="", help="Directory for saving checkpoints")
 
     parser.add_argument("--data-dir", type=str, default="/localhome/ava40/Desktop/HiT/data_src/shapenet/shapenetv2.1", help="Root directory of dataset")
     parser.add_argument("--dataset-name", type=str, default="shapenet", help="Name of the dataset")
@@ -139,7 +142,7 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
         pc_mode=args.pointcloud,
         mesh_mode=args.mesh,
         iou_mode=args.iou,
-        cd_mode=args.cd
+        cd_mode=args.cd,
     )
 
     trainconfig = TrainConfig(
@@ -150,7 +153,8 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
         npc=args.npc,
         exp_dir=args.exp_dir,
         exp_name=args.exp_name,
-        random_seed=args.random_seed
+        random_seed=args.random_seed,
+        ckpt=args.ckpt
     )
 
     loss_config = LossConfig(
