@@ -19,7 +19,6 @@ def build_dataset(
     # Placeholder for dataset building logic
     if train_mode:
         if config.dataset_name == "shapenet":
-            dataset = ShapeNetDataset(config=config, train_mode=train_mode, recon_mode=recon_mode, pc_mode=pc_mode, mesh_mode=mesh_mode, iou_mode=iou_mode, cd_mode=cd_mode)
-            pass
-        pass
-    pass
+            return ShapeNetDataset(config=config, train_mode=train_mode, recon_mode=recon_mode, pc_mode=pc_mode, mesh_mode=mesh_mode, iou_mode=iou_mode, cd_mode=cd_mode)
+
+    raise ValueError(f'dataset {config.dataset_name} is not supported')

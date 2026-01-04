@@ -25,6 +25,13 @@ class ShapeNetDataset(Dataset):
         This dataset loader loads shapenet data on the fly using lazy loading for all category training.
         """
 
+        self.train_mode = train_mode
+        self.recon = recon_mode
+        self.pointcloud = pc_mode
+        self.mesh = mesh_mode
+        self.iou = iou_mode
+        self.cd = cd_mode
+
         self._data_indexs = [] 
         self.data_file_paths, self.vox_file_paths, self.pc_file_paths, self.mesh_file_paths, self.gt_points_file_paths = {}, {}, {}, {}, {}
         for i, split_name in enumerate(config.splits): 
@@ -78,7 +85,6 @@ class ShapeNetDataset(Dataset):
             qpts, qvals = qpts[qpts_indexs], qvals[qpts_indexs]
         else:
             qpts, qvals = qpts, qvals
-
         
         data = dict() 
         data['querypts'] = qpts.astype(np.float32) 
@@ -90,8 +96,6 @@ class ShapeNetDataset(Dataset):
         # data['voxels'] = voxels.astype(np.float32) 
         data['shape_id'] = shape_id
         data['category'] = hdf5_filename.split('_')[0]
-
-
         
         # if self.pointcloud or self.iou:
         #     gt_pc = self.gt_points_file_paths[hdf5_filename]['gt_points'][shape_hdf5_idx][:]

@@ -102,7 +102,54 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
         iou_mode=model_config.iou_mode,
         cd_mode=model_config.cd_mode
     )
-    # pass
+
+    sampler = DistributedSampler(
+        dataset,
+        num_replicas=dist.get_world_size(),
+        rank=rank,
+        shuffle=True,
+        seed=train_config.random_seed
+    )
+    dataloader = DataLoader(
+        dataset,
+        batch_size=int(train_config.global_batch_size // dist.get_world_size()),
+        shuffle=False,
+        sampler=sampler,
+        num_workers=1,
+        pin_memory=True,
+        drop_last=True
+    )
+    logger.info(f"Read from: {data_config.data_dir}, Dataset contains {len(dataset):,} images.")
+
+    # load the model from a checkpoint is training breaks.
+    if train_config.vq_ckpt != "":
+        checkpoint = torch.load(train_config.vq_ckpt, map_location="cpu")
+        
+        vq_model.load_state_dict(checkpoint["model"])
+        train_steps = checkpoint["steps"] if "steps" in checkpoint else int(train_config.vq_ckpt.split('/')[-1].split('.')[0])
+        
+        if train_config.new_session:
+            train_steps = 0
+            start_epoch = 0
+        else:
+            start_epoch = int(train_steps / int(len(dataset) / train_config.global_batch_size))
+            train_steps = int(start_epoch * int(len(dataset) / train_config.global_batch_size))
+            optimizer.load_state_dict(checkpoint["optimizer"])
+
+        del checkpoint
+        logger.info(f"Resume training from checkpoint: {train_config.vq_ckpt}")
+        logger.info(f"Initial state: steps={train_steps}, epochs={start_epoch}")
+    else:
+        train_steps = 0
+        start_epoch = 0
+           
+    vq_model = DDP(vq_model.to(device), device_ids=[getattr(train_config, "gpu")])
+    vq_model.train()
+    
+    # Variables for monitoring/logging purposes:
+    log_steps = 0
+    running_loss = 0
+    start_time = time.time()
 
 if __name__ == "__main__":
     dataconfig, modelconfig, trainconfig, lossconfig = parse_args()
