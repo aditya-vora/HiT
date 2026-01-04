@@ -10,43 +10,46 @@ from config import *
 from utils import get_split_shape_ids
 
 class ShapeNetDataset(Dataset):
-    def __init__(self, config: DataConfig) -> None:
+    def __init__(
+            self, 
+            config: DataConfig, 
+            train_mode: bool=True, 
+            recon_mode: bool=False, 
+            pc_mode: bool=False, 
+            mesh_mode: bool=False, 
+            iou_mode: bool=False, 
+            cd_mode: bool=False
+        ) -> None:
         super(ShapeNetDataset, self).__init__()
         """
         This dataset loader loads shapenet data on the fly using lazy loading for all category training.
         """
-        # self.data_dir = config.data_dir
-        # self.pointcloud = pointcloud
-        # self.iou = iou
-        # self.mesh = mesh 
-        # self.cd = cd
-        # self.cats = config.cats_list
-        # self.splits = split
-        # self.n_pc = n_pc
-        # self.n_qpts = n_qpts
 
         self._data_indexs = [] 
         self.data_file_paths, self.vox_file_paths, self.pc_file_paths, self.mesh_file_paths, self.gt_points_file_paths = {}, {}, {}, {}, {}
-        for i, split in enumerate(config.splits): 
-            for j, cat in enumerate(config.cats_list):
-                data_file_path = os.path.join(config.data_dir, cat, f"{cat}_{split}_vox.hdf5")
+        for i, split_name in enumerate(config.splits): 
+            for j, cat_name in enumerate(config.cats_list):
+                data_file_path = os.path.join(config.data_dir, cat_name, f"{cat_name}_{split_name}_vox.hdf5")
                 # vox_file_path = os.path.join(self.data_dir, cat, f"{cat}_{split}_vox_down.hdf5")
-                pc_file_path = os.path.join(config.data_dir, cat, f"{cat}_{split}_pc.hdf5")
+                pc_file_path = os.path.join(config.data_dir, cat_name, f"{cat_name}_{split_name}_pc.hdf5")
                 
-                self.data_file_paths[f"{cat}_{split}"] = h5py.File(data_file_path, 'r')
-                # self.vox_file_paths[f"{cat}_{split}"] = h5py.File(vox_file_path, 'r')
-                self.pc_file_paths[f"{cat}_{split}"] = h5py.File(pc_file_path, 'r')
-                shape_ids = get_split_shape_ids(path=os.path.join(config.data_dir, cat, "split.json"), split_type=split)
+                self.data_file_paths[f"{cat_name}_{split_name}"] = h5py.File(data_file_path, 'r')
+                # self.vox_file_paths[f"{cat_name}_{split_name}"] = h5py.File(vox_file_path, 'r')
+                self.pc_file_paths[f"{cat_name}_{split_name}"] = h5py.File(pc_file_path, 'r')
+                shape_ids = get_split_shape_ids(
+                    path=os.path.join(config.data_dir, cat_name, "split.json"), 
+                    split_type=split_name
+                )
 
-                if self.mesh:
-                    mesh_file_path = os.path.join(self.data_dir, cat, f"{cat}_{split}_meshes.hdf5")
-                    self.mesh_file_paths[f"{cat}_{split}"] = h5py.File(mesh_file_path, 'r')
+                if mesh_mode:
+                    mesh_file_path = os.path.join(config.data_dir, cat_name, f"{cat_name}_{split_name}_meshes.hdf5")
+                    self.mesh_file_paths[f"{cat_name}_{split_name}"] = h5py.File(mesh_file_path, 'r')
 
-                if self.pointcloud or self.iou:
-                    gt_points_file_path = os.path.join(self.data_dir, cat, f"{cat}_{split}_points.hdf5")
-                    self.gt_points_file_paths[f"{cat}_{split}"] = h5py.File(gt_points_file_path, 'r')
+                if pc_mode or iou_mode:
+                    gt_points_file_path = os.path.join(config.data_dir, cat_name, f"{cat_name}_{split_name}_points.hdf5")
+                    self.gt_points_file_paths[f"{cat_name}_{split_name}"] = h5py.File(gt_points_file_path, 'r')
 
-                self._data_indexs.extend([(f"{cat}_{split}", (i, shape_id)) for i, shape_id in enumerate(shape_ids)])
+                self._data_indexs.extend([(f"{cat_name}_{split_name}", (i, shape_id)) for i, shape_id in enumerate(shape_ids)])
 
     def __len__(self):
         return len(self._data_indexs)
@@ -68,7 +71,6 @@ class ShapeNetDataset(Dataset):
             pc = pc[pc_indexs]
         else:
             pc = pc
-
 
         if not self.cd:
             # voxels = self.vox_file_paths[hdf5_filename][f'voxels_{self.vox_res}'][shape_hdf5_idx][:]

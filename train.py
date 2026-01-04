@@ -93,7 +93,15 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
         data_config.cats_list = [data_config.cats]
 
     logger.info(f"Training on categories: {data_config.cats_list}")
-    dataset = build_dataset(config=data_config, mode="train")
+    dataset = build_dataset(
+        config=data_config, 
+        train_mode=model_config.train_mode,
+        recon_mode=model_config.recon_mode,
+        pc_mode=model_config.pc_mode,
+        mesh_mode=model_config.mesh_mode,
+        iou_mode=model_config.iou_mode,
+        cd_mode=model_config.cd_mode
+    )
     # pass
 
 if __name__ == "__main__":
