@@ -15,41 +15,40 @@ from config import *
 from utils.distributed import init_distributed_mode
 from utils.logger import create_logger
 from utils import *
-# from src.models.hit import HiTModel
 from src.models.hit import HiT_models
 from src.loss import Loss
-from dataset.build import build_dataset
+from src.dataset.build import build_dataset
 
 
 #################################################################################
 #                                  Training Loop                                #
 #################################################################################
-def main(dataconfig: DataConfig, modelconfig: ModelConfig, trainconfig: TrainConfig, lossconfig: LossConfig): 
+def main(data_config: DataConfig, model_config: ModelConfig, train_config: TrainConfig, loss_config: LossConfig): 
     assert torch.cuda.is_available(), "Training currently requires at least one GPU."
 
     # Setup DDP:
-    init_distributed_mode(trainconfig)
+    init_distributed_mode(train_config)
     
-    assert trainconfig.global_batch_size % dist.get_world_size() == 0, f"Batch size must be divisible by world size."
+    assert train_config.global_batch_size % dist.get_world_size() == 0, f"Batch size must be divisible by world size."
     rank = dist.get_rank()
     
     # you get the device from ddp
     device = rank % torch.cuda.device_count()    
     if rank == 0: 
-        pprint.pprint(trainconfig)
-        pprint.pprint(modelconfig)
-        pprint.pprint(lossconfig)
-        pprint.pprint(dataconfig)
+        pprint.pprint(train_config)
+        pprint.pprint(model_config)
+        pprint.pprint(loss_config)
+        pprint.pprint(data_config)
         
     # set device and random seed
-    seed = trainconfig.random_seed * dist.get_world_size() + rank
+    seed = train_config.random_seed * dist.get_world_size() + rank
     torch.manual_seed(seed)
     torch.cuda.set_device(device)
 
     # Setup an experiment folder:
     checkpoint_dir = None
     if rank == 0:
-        experiment_dir = setup_experiment_directory(base_dir=trainconfig.exp_dir, exp_name=trainconfig.exp_name)
+        experiment_dir = setup_experiment_directory(base_dir=train_config.exp_dir, exp_name=train_config.exp_name)
         checkpoint_dir = make_path_and_dir(folders=[experiment_dir, "checkpoints"])
         logger = create_logger(experiment_dir, filename='log', mode="ddp")
         logger.info(f"Experiment directory created at {experiment_dir}")
@@ -59,45 +58,44 @@ def main(dataconfig: DataConfig, modelconfig: ModelConfig, trainconfig: TrainCon
     # training env
     logger.info(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
-    model = HiT_models[modelconfig.model_type](
-        pf_dim=modelconfig.pf_dim,
-        zf_dim=modelconfig.zf_dim,
-        tf_dim=modelconfig.tf_dim,
-        ef_dim=modelconfig.ef_dim,
-        gf_dim=modelconfig.gf_dim,
-        n_parts=modelconfig.n_parts,
-        n_levels=modelconfig.n_levels,
-        n_planes=modelconfig.n_planes,
-        planef_dim=modelconfig.planef_dim,
-        mask_mode=modelconfig.mask_mode
+    model = HiT_models[model_config.model_type](
+        pf_dim=model_config.pf_dim,
+        zf_dim=model_config.zf_dim,
+        tf_dim=model_config.tf_dim,
+        ef_dim=model_config.ef_dim,
+        gf_dim=model_config.gf_dim,
+        n_parts=model_config.n_parts,
+        n_levels=model_config.n_levels,
+        n_planes=model_config.n_planes,
+        planef_dim=model_config.planef_dim,
+        mask_mode=model_config.mask_mode
     ).to(device=device)
 
     logger.info(f"Model Encoder Parameters: {sum(p.numel() for p in model.parameters()):,}")
     logger.info(f"Model Encoder Trainable Parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad == True):,}")
 
-
     loss = Loss(
-        w_im_sample_loss=lossconfig.w_im_sample_loss,
-        w_equilibrium_loss=lossconfig.w_equilibrium_loss,
-        w_sample_loss=lossconfig.w_sample_loss,
-        w_bbx_loss=lossconfig.w_bbx_loss,
-        w_center_loss=lossconfig.w_center_loss,
-        w_overlap_loss=lossconfig.w_overlap_loss,
-        w_balance_loss=lossconfig.w_balance_loss,
-        w_containment_loss=lossconfig.w_containment_loss,
-        n_levels=lossconfig.n_levels,
-        n_parts=lossconfig.n_parts,
+        w_im_sample_loss=loss_config.w_im_sample_loss,
+        w_equilibrium_loss=loss_config.w_equilibrium_loss,
+        w_sample_loss=loss_config.w_sample_loss,
+        w_bbx_loss=loss_config.w_bbx_loss,
+        w_center_loss=loss_config.w_center_loss,
+        w_overlap_loss=loss_config.w_overlap_loss,
+        w_balance_loss=loss_config.w_balance_loss,
+        w_containment_loss=loss_config.w_containment_loss,
+        n_levels=loss_config.n_levels,
+        n_parts=loss_config.n_parts,
     ).to(device=device)
 
-    if dataconfig.cats == "all":
-        dataconfig.cats_list = read_text(f"{dataconfig.data_dir}/cats.txt")
+    if data_config.cats == "all":
+        data_config.cats_list = read_text(f"{data_config.data_dir}/cats.txt")
     else:
-        dataconfig.cats_list = [dataconfig.cats]
+        data_config.cats_list = [data_config.cats]
 
-    logger.info(f"Training on categories: {dataconfig.cats_list}")
-    dataset = build_dataset(config=config, mode="train")
-    pass
+    logger.info(f"Training on categories: {data_config.cats_list}")
+    dataset = build_dataset(config=data_config, mode="train")
+    # pass
 
 if __name__ == "__main__":
     dataconfig, modelconfig, trainconfig, lossconfig = parse_args()
-    main(dataconfig=dataconfig, modelconfig=modelconfig, trainconfig=trainconfig, lossconfig=lossconfig)
+    main(data_config=dataconfig, model_config=modelconfig, train_config=trainconfig, loss_config=lossconfig)

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Dict
 from einops import rearrange, repeat
 
-from config import Config
+from config import *
 from src.models.pointnet import PointNet
 from src.models.conv_occnet import LocalPoolPointnet
 from src.models.modules import TransformerBlock

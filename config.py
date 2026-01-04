@@ -41,6 +41,12 @@ class ModelConfig:
 
     model_type: str = "hit-volume"
     mask_mode: str = "mask" 
+    train_mode: bool = True
+    recon_mode: bool = False
+    pc_mode: bool = False
+    mesh_mode: bool = False
+    iou_mode: bool = False
+    cd_mode: bool = False
 
 @dataclass 
 class DataConfig: 
@@ -56,7 +62,7 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     
     parser.add_argument("--epochs", type=int, default=150, help="Number of epochs")
     parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate for Adam optimizer [0.0001]")
-    parser.add_argument("--global_batch_size", type=int, default=24, help="Batch size")
+    parser.add_argument("--global-batch-size", type=int, default=24, help="Batch size")
     parser.add_argument("--pts-per-shape", type=int, default=4096, help="Number of points per shape.")
     parser.add_argument("--npc", type=int, default=2048, help="Number of points in the point cloud.")
     parser.add_argument("--exp-dir", type=str, default="/mnt/data/ava/hit/per_cat_exp", help="Directory for saving experiments")
@@ -95,14 +101,14 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     # parser.add_argument("--interval", type=List[float], default=[-1,1] , help="Interval")
 
     # loss params 
-    parser.add_argument("--w-im-sample_loss", type=float, default=1.0, help="Weight for MLP occ decoder loss.")
-    parser.add_argument("--w-sample_loss", type=float, default=1.0, help="Weight for convex sample loss.")
-    parser.add_argument("--w-equilibrium_loss", type=float, default=0.001, help="Weight for equilibrium loss.")
-    parser.add_argument("--w-bbx_loss", type=float, default=0.01, help="Weight for bounding box loss.")
-    parser.add_argument("--w-center_loss", type=float, default=0.001, help="Weight for center loss.")
-    parser.add_argument("--w-overlap_loss", type=float, default=0.01, help="Weight for overlap loss.")
-    parser.add_argument("--w-balance_loss", type=float, default=0.01, help="Weight for balance loss.")
-    parser.add_argument("--w-containment_loss", type=float, default=0.01, help="Weight for containment loss")
+    parser.add_argument("--w-im-sample-loss", type=float, default=1.0, help="Weight for MLP occ decoder loss.")
+    parser.add_argument("--w-sample-loss", type=float, default=1.0, help="Weight for convex sample loss.")
+    parser.add_argument("--w-equilibrium-loss", type=float, default=0.001, help="Weight for equilibrium loss.")
+    parser.add_argument("--w-bbx-loss", type=float, default=0.01, help="Weight for bounding box loss.")
+    parser.add_argument("--w-center-loss", type=float, default=0.001, help="Weight for center loss.")
+    parser.add_argument("--w-overlap-loss", type=float, default=0.01, help="Weight for overlap loss.")
+    parser.add_argument("--w-balance-loss", type=float, default=0.01, help="Weight for balance loss.")
+    parser.add_argument("--w-containment-loss", type=float, default=0.01, help="Weight for containment loss")
 
     parser.add_argument("--mask-mode", type=str, default="mask", help="Model name")
 
@@ -127,7 +133,13 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
         n_levels=args.nlevels,
         n_parts=args.nparts,
         model_type=args.model_type,
-        mask_mode=args.mask_mode
+        mask_mode=args.mask_mode,
+        train_mode=args.train,
+        recon_mode=args.recon,
+        pc_mode=args.pointcloud,
+        mesh_mode=args.mesh,
+        iou_mode=args.iou,
+        cd_mode=args.cd
     )
 
     trainconfig = TrainConfig(

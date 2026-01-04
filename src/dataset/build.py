@@ -2,14 +2,14 @@ import torch
 import torch.nn as nn 
 import torch.nn.functional as F 
 
-from config import Config, LossConfig
-from src.dataset.shapenet import ShapeNetDatasetLazy
+from config import DataConfig
+from src.dataset.shapenet import ShapeNetDataset
 
-def build_dataset(config: Config, mode="train"):
+def build_dataset(config: DataConfig, mode="train"):
     # Placeholder for dataset building logic
     if mode == "train":
         if config.dataset_name == "shapenet":
-            dataset = ShapeNetDatasetLazy(config=config)
+            dataset = ShapeNetDataset(config=config)
             pass
         pass
     pass

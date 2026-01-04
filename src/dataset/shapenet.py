@@ -6,11 +6,11 @@ from typing import List, Optional
 import json
 from torch.utils.data import Dataset
 
-from config import Config
+from config import *
 from utils import get_split_shape_ids
 
 class ShapeNetDataset(Dataset):
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: DataConfig) -> None:
         super(ShapeNetDataset, self).__init__()
         """
         This dataset loader loads shapenet data on the fly using lazy loading for all category training.
