@@ -172,8 +172,6 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
             data = model(points, querypts, fileids)
             
             loss = loss_func(data, occ, querypts, points, n_query_pts, iter_num=train_steps)
-            logger.info(loss['total_loss'].item())
-            # print(querypts.shape, occ.shape)
             loss['total_loss'].backward()
 
             if train_config.max_grad_norm != 0.0:
@@ -183,7 +181,51 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
                 )
                 
             optimizer.step()
-            print(querypts.shape, occ.shape)
+
+            # # Log loss values:
+            running_loss += loss['total_loss'].item() 
+
+            log_steps += 1
+            train_steps += 1
+
+            if train_steps % train_config.log_every == 0:
+
+                # Measure training speed:
+                torch.cuda.synchronize()
+                end_time = time.time()
+                steps_per_sec = log_steps / (end_time - start_time)
+
+                # Reduce loss history over all processes:
+                avg_loss = torch.tensor(running_loss / log_steps, device=device)
+                dist.all_reduce(avg_loss, op=dist.ReduceOp.SUM)
+                avg_loss = avg_loss.item() / dist.get_world_size()
+                logger.info(f"(step={train_steps:07d}) Train Loss: {avg_loss:.4f}, Train Steps/Sec: {steps_per_sec:.2f}")
+
+                # Reset monitoring variables:
+                running_loss = 0
+                log_steps = 0
+                start_time = time.time()
+
+            # Save checkpoint:
+            if train_steps % train_config.ckpt_every == 0 and train_steps > 0:
+                # as ddp loads model on each gpu, we need to save only from rank 0
+                # we only save the vq model weights.
+                if rank == 0:
+                    assert checkpoint_dir is not None, "checkpoint_dir should not be None for rank 0"
+                    model_weight = model.module.state_dict()  
+                    checkpoint = {
+                        "model": model_weight,
+                        "optimizer": optimizer.state_dict(),
+                        "steps": train_steps,
+                        "train_args": train_config,
+                        "data_args": data_config,
+                        "model_args": model_config,
+                        "loss_args": loss_config
+                    }
+                    ckpt_path = os.path.join(checkpoint_dir, f"{train_steps:07d}.pt")
+                    torch.save(checkpoint, ckpt_path)
+                    logger.info(f"Saved checkpoint to {ckpt_path}")                    
+                dist.barrier()
 
 
 if __name__ == "__main__":

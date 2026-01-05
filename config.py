@@ -25,7 +25,8 @@ class TrainConfig:
     random_seed: int = 42
     ckpt: str = ""
     max_grad_norm: float = 1.0
-
+    log_every: int = 100
+    ckpt_every: int = 1000
 
 @dataclass
 class ModelConfig: 
@@ -88,9 +89,8 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     parser.add_argument("--iou", action="store_true", help="Output IOU for test shapes")
     parser.add_argument("--cd", action="store_true", help="Output chamfer distance for test shapes")
 
-    # parser.add_argument("--log_data", type=int, default=100, help="Directory for saving log data")
-    # parser.add_argument("--log_model", type=int, default=1000, help="Directory for saving log model")
-    # parser.add_argument("--check_val_every_n_epoch", type=int, default=10, help="Check validation every n epochs")
+    parser.add_argument("--log-every", type=int, default=100, help="Directory for saving log data")
+    parser.add_argument("--ckpt-every", type=int, default=1000, help="Directory for saving log model")
     parser.add_argument("--nparts", type=int, nargs='+', default=[8,16,36], help="Number of parts")
     parser.add_argument("--nlevels", type=int, default=3, help="Number of levels")
     parser.add_argument("--nplanes", type=int, default=32, help="Number of planes")
@@ -158,7 +158,9 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
         exp_name=args.exp_name,
         random_seed=args.random_seed,
         ckpt=args.ckpt,
-        max_grad_norm=args.max_grad_norm
+        max_grad_norm=args.max_grad_norm,
+        log_every=args.log_every,
+        ckpt_every=args.ckpt_every
     )
 
     loss_config = LossConfig(
