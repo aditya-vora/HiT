@@ -3,8 +3,98 @@ import trimesh
 from typing import Dict
 import numpy as np
 import torch
+import torch.nn.functional as F
+from scipy.spatial import distance
+from typing import Tuple, List
+from scipy.ndimage import binary_erosion, binary_dilation
 
-from utils import read_json
+from utils import read_json, convert_to_torch_tensor
+
+
+def extract_surface_voxels(voxels: np.array=None) -> np.array:
+    voxels_eroded = binary_erosion(voxels)
+    voxels_dilated = binary_dilation(voxels)
+    surface_voxels = (voxels_dilated ^ voxels_eroded)
+    return surface_voxels
+
+
+def sample_in_band(dim: int, band_min: float, band_max: float, nsamples: int, s_range=[-0.6,0.6]) -> torch.Tensor:
+    samples = torch.rand((nsamples, 3)) * (s_range[1] - s_range[0]) + s_range[0]
+    samples[:, dim] = torch.rand((nsamples,)) * (band_max - band_min) + band_min
+    return samples
+
+
+def pad_volume(points: torch.Tensor, occ: torch.Tensor, nsample: int, sample_range: List[float]=[-0.5,0.5], pad=0.1) -> None:
+    new_sample_min, new_sample_max = sample_range[0] - pad, sample_range[1] + pad
+
+    band_min_1, band_max_1 = sample_range[0] - pad, sample_range[0]
+    band_min_2, band_max_2 = sample_range[1], sample_range[1] + pad
+
+    nsamples_per_band = nsample // 6
+
+    # Sample points for each of the six bands
+    new_query_coords = torch.cat([
+        sample_in_band(0, band_min_1, band_max_1, nsamples_per_band, s_range=[new_sample_min, new_sample_max]),  # X-axis negative band
+        sample_in_band(0, band_min_2, band_max_2, nsamples_per_band, s_range=[new_sample_min, new_sample_max]),  # X-axis positive band
+        sample_in_band(1, band_min_1, band_max_1, nsamples_per_band, s_range=[new_sample_min, new_sample_max]),  # Y-axis negative band
+        sample_in_band(1, band_min_2, band_max_2, nsamples_per_band, s_range=[new_sample_min, new_sample_max]),  # Y-axis positive band
+        sample_in_band(2, band_min_1, band_max_1, nsamples_per_band, s_range=[new_sample_min, new_sample_max]),  # Z-axis negative band
+        sample_in_band(2, band_min_2, band_max_2, nsamples_per_band, s_range=[new_sample_min, new_sample_max])   # Z-axis positive band
+    ], dim=0)
+
+    new_query_coords = new_query_coords.to(occ.device)
+
+    new_occupancy_gt = torch.zeros(new_query_coords.shape[0], dtype=torch.float32, device=occ.device)
+    occ = torch.cat([occ, new_occupancy_gt])
+    points = torch.cat([points, new_query_coords])
+    return (points, occ)
+
+
+def sample_voxels_2(voxels: torch.tensor=None, voxel_res: int=256, npoints: List[int]=[25000, 25000], vol_range=[-1.0,1.0], scale=0.8) -> Tuple[torch.Tensor, torch.Tensor]:
+    
+    n_surface_points, n_in_out_points, n_pad_points = npoints
+
+    kernel = np.array([
+        [[0, 0, 0], [0, 1, 0], [0, 0, 0]],
+        [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
+        [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
+    ])
+    kernel = convert_to_torch_tensor(np_arr=kernel, data_type="fp32", device="cuda")
+    kernel = kernel.unsqueeze(0).unsqueeze(0)   
+    voxels_f = voxels.unsqueeze(0).unsqueeze(0)  # Add batch & channel dim
+    neighbor_sum = F.conv3d(voxels_f, kernel, padding=1).squeeze()
+
+    surf_voxel_coords = torch.nonzero((voxels == 1) & (neighbor_sum < 7), as_tuple=False)
+    
+    n_surface_voxels = surf_voxel_coords.shape[0]
+    sampled_surf_vox_coords = surf_voxel_coords[torch.randperm(n_surface_voxels)[:n_surface_points]]
+
+    if sampled_surf_vox_coords.shape[0] < n_surface_points:
+        n_in_out_points += n_surface_points - sampled_surf_vox_coords.shape[0]
+
+    perturbation = (torch.randn_like(sampled_surf_vox_coords, dtype=torch.float32) - 0.5) * 2  # [-1, 1] shift
+    near_sampled_surf_vox_coords = sampled_surf_vox_coords + perturbation
+    near_sampled_surf_vox_coords = torch.clamp(near_sampled_surf_vox_coords, 0, voxel_res - 1)
+    near_sampled_surf_vox_coords = near_sampled_surf_vox_coords.long()
+
+    near_surf_occ = voxels[
+        near_sampled_surf_vox_coords[:, 0], 
+        near_sampled_surf_vox_coords[:, 1], 
+        near_sampled_surf_vox_coords[:, 2]
+    ]
+
+    # sample points in range [0,256]
+    grid_coords = (torch.rand((n_in_out_points, 3), device=near_sampled_surf_vox_coords.device) * voxel_res).long().clamp(0, voxel_res-1)
+    occ_gt_uniform = voxels[grid_coords[:, 0], grid_coords[:, 1], grid_coords[:, 2]]
+
+    occ_gt = torch.cat([near_surf_occ, occ_gt_uniform])
+
+    query_points = torch.cat([near_sampled_surf_vox_coords, grid_coords], dim=0)
+    query_points = (query_points.float() / voxel_res) * (vol_range[1] - vol_range[0]) + vol_range[0]
+
+    query_points, occ_gt = pad_volume(points=query_points, occ=occ_gt, nsample=n_pad_points, sample_range=vol_range, pad=0.1)
+
+    return (query_points, occ_gt)
 
 
 def parse_parts_info(parts_info: Dict=None, map_dict: Dict=None):
