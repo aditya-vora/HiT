@@ -31,6 +31,7 @@ class ShapeNetDataset(Dataset):
         self.mesh = mesh_mode
         self.iou = iou_mode
         self.cd = cd_mode
+        self.config = config
 
         self._data_indexs = [] 
         self.data_file_paths, self.vox_file_paths, self.pc_file_paths, self.mesh_file_paths, self.gt_points_file_paths = {}, {}, {}, {}, {}
@@ -74,14 +75,14 @@ class ShapeNetDataset(Dataset):
         pc = pc * surf_scale
 
         if not self.cd: 
-            pc_indexs = np.random.default_rng().choice(pc.shape[0], self.n_pc, replace=False)
+            pc_indexs = np.random.default_rng().choice(pc.shape[0], self.config.npc, replace=False)
             pc = pc[pc_indexs]
         else:
             pc = pc
 
         if not self.cd:
             # voxels = self.vox_file_paths[hdf5_filename][f'voxels_{self.vox_res}'][shape_hdf5_idx][:]
-            qpts_indexs = np.random.default_rng().choice(qpts.shape[0], self.n_qpts, replace=False) 
+            qpts_indexs = np.random.default_rng().choice(qpts.shape[0], self.config.pts_per_shape, replace=False) 
             qpts, qvals = qpts[qpts_indexs], qvals[qpts_indexs]
         else:
             qpts, qvals = qpts, qvals

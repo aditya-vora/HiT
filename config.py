@@ -20,8 +20,6 @@ class TrainConfig:
     epochs: int = 150
     lr: float = 0.0001
     global_batch_size: int = 64
-    pts_per_shape: int = 4096
-    npc: int = 2048
     exp_dir: str = "./exp"
     exp_name: str = "example"
     random_seed: int = 42
@@ -58,6 +56,9 @@ class DataConfig:
     shape_id: str = "1ab3abb5c090d9b68e940c4e64a94e1e"
     cats_list: List[str] = field(default_factory=list)
     splits: List[str] = field(default_factory=lambda: ["train", "val"])
+    pts_per_shape: int = 4096
+    npc: int = 2048
+
 
 def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     parser = argparse.ArgumentParser(description="PyTorch HiT Training")
@@ -122,7 +123,9 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
         dataset_name=args.dataset_name,
         cats=args.cats,
         splits=args.splits,
-        shape_id=args.shape_id
+        shape_id=args.shape_id,
+        pts_per_shape=args.pts_per_shape,
+        npc=args.npc,
     )
 
     modelconfig = ModelConfig(
@@ -149,8 +152,6 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
         epochs=args.epochs,
         lr=args.lr,
         global_batch_size=args.global_batch_size,
-        pts_per_shape=args.pts_per_shape,
-        npc=args.npc,
         exp_dir=args.exp_dir,
         exp_name=args.exp_name,
         random_seed=args.random_seed,
