@@ -27,12 +27,10 @@ This repository contains the official implementation of [HiT: Hierarchical Trans
 
 ### TODO
 - [x] Release training code.
-- [ ] Check and verify the training code.
 - [x] Release data processing scripts.
-- [ ] Check and verify the data processing scripts.
 - [ ] Release evaluation scripts.
-- [ ] Check and verify evaluation scripts.
 - [ ] Release the pretrained models.
+- [ ] Testing.
 
 <section class="section" id="BibTeX">
   <div class="container is-max-desktop content">
