@@ -75,7 +75,7 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
     logger.info(f"Model Encoder Parameters: {sum(p.numel() for p in model.parameters()):,}")
     logger.info(f"Model Encoder Trainable Parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad == True):,}")
 
-    loss = Loss(
+    loss_func = Loss(
         w_im_sample_loss=loss_config.w_im_sample_loss,
         w_equilibrium_loss=loss_config.w_equilibrium_loss,
         w_sample_loss=loss_config.w_sample_loss,
@@ -163,9 +163,26 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
             # move data to device
             querypts = data['querypts'].to(device, non_blocking=True)
             occ = data['occgt'].to(device, non_blocking=True)
+            points = data['pc'].to(device, non_blocking=True)
+            fileids = data['fileid']
             
             optimizer.zero_grad()
 
+            n_query_pts = querypts.shape[1] 
+            data = model(points, querypts, fileids)
+            
+            loss = loss_func(data, occ, querypts, points, n_query_pts, iter_num=train_steps)
+            logger.info(loss['total_loss'].item())
+            # print(querypts.shape, occ.shape)
+            loss['total_loss'].backward()
+
+            if train_config.max_grad_norm != 0.0:
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), 
+                    train_config.max_grad_norm
+                )
+                
+            optimizer.step()
             print(querypts.shape, occ.shape)
 
 

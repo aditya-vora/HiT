@@ -13,7 +13,7 @@ class PartParameterization(nn.Module):
         :param npoints: Number of points in the point cloud
         :param nqpts: Number of query points of the implicit field
         :param zf_dim: Dimension of the embedding
-        :param inf_dim: Dimension of the input features
+        :param pf_dim: Dimension of the input features
         :param nplanes: Number of planes to be used
         :param planef_dim: Dimension of the planes
     """
@@ -98,10 +98,10 @@ class PartParameterization(nn.Module):
         n_planes = planes.shape[2]
         b = planes.shape[0]
 
-        norm_logit = planes[..., :self.inf_dim-1]
+        norm_logit = planes[..., :self.pf_dim-1]
 
         # range [-1, 0]
-        offset = -(F.sigmoid(planes[..., self.inf_dim-1:self.inf_dim]) * self._offset_scale + self._offset_lbound)
+        offset = -(F.sigmoid(planes[..., self.pf_dim-1:self.pf_dim]) * self._offset_scale + self._offset_lbound)
 
         blend_params = (F.sigmoid(blend_params[...,:n_parts]) * self._blend_scale + self._blend_lbound) #[50.0, 300.0]
 

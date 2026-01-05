@@ -274,7 +274,7 @@ class HiTDecoder(nn.Module):
         all_relations, all_part_sdf_logits, all_parent_child_indicator = {}, {}, {}
         all_blend_params = {}   
         for i in range(self.num_active_blocks):
-            convex_codebook = self.convex_codebooks[i]
+            convex_codebook = self.part_blocks[i]
 
             if i == 0:
                 convex_latents = tokens
@@ -287,7 +287,7 @@ class HiTDecoder(nn.Module):
 
                 # straight through estimator
                 max_indexs = torch.argmax(relations, dim=-1)
-                pre_one_hot_indexs = F.one_hot(max_indexs, num_classes=self.mparts[i-1]).float()
+                pre_one_hot_indexs = F.one_hot(max_indexs, num_classes=self.n_parts[i-1]).float()
                 pre_one_hot_indexs = relations + (pre_one_hot_indexs - relations).detach()
 
                 parent_indicator = all_convex_part_indicator_hat[f'level_{i-1}'].permute(0, 2, 1)
@@ -298,7 +298,7 @@ class HiTDecoder(nn.Module):
 
             convex_indicator, (convex_trans, part_sdf_logits, convex_indicator_sum_full, convex_normals, convex_offset, convex_part_indicator, blend_params) = self.multiconvex_decoder(qpts, convex_latents)
             convex_part_indicator = convex_part_indicator.permute(0, 2, 1, 3).squeeze(-1)
-            convex_indicator_sum, convex_sum_trans = torch.split(convex_indicator_sum_full, [n_query_pts, self.mparts[i]], dim=1)
+            convex_indicator_sum, convex_sum_trans = torch.split(convex_indicator_sum_full, [n_query_pts, self.n_parts[i]], dim=1)
 
             if i > 0 and self.mask_mode == "mask": 
                 convex_part_indicator_hat = convex_part_indicator * parent_child_indicator 
