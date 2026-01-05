@@ -13,8 +13,8 @@ import numpy as np
 import h5py
 import open3d as o3d
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import read_text, get_split_shape_ids_from_text_file, get_split_shape_ids
-from utils.mesh import read_full_mesh_from_part_json
+from utils import read_text, get_split_shape_ids_from_text_file, get_split_shape_ids, convert_to_torch_tensor, convert_to_np_array
+from utils.mesh import read_full_mesh_from_part_json, scale_mesh_unit_sphere, sample_surface_torch
 
 def process_shape_id(shape_id_path: str, npoints: List[int]) -> np.array:
     obj_files_root = os.path.join(shape_id_path, "objs")                
