@@ -1,6 +1,6 @@
 # HiT: Hierarchical Transformers for Unsupervised 3D Shape Abstraction
 
-<video src="https://github.com/aditya-vora/HiT/raw/main/assets/hit_teaser.mp4" controls muted loop></video>
+![](assets/hit_teaser.gif)
 
 ### Aditya Vora, Lily Goli, Andrea Tagliasacchi, Hao Zhang
 
