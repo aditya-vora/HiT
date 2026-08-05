@@ -1,8 +1,10 @@
 .DS_Store
 docs/.DS_Store
 exp/
-__pycache__
+__pycache__/
+*.pyc
 .ninja_deps
 .ninja_log
-.DS_Store
 data_src/
+src/libs/pointnet2/rebuild/build/
+*.egg-info/

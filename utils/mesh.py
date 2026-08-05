@@ -1,14 +1,15 @@
-import os 
-import trimesh 
+import os
+import trimesh
+import mcubes
 from typing import Dict
 import numpy as np
 import torch
 import torch.nn.functional as F
-from scipy.spatial import distance
+from scipy.spatial import distance, cKDTree
 from typing import Tuple, List
 from scipy.ndimage import binary_erosion, binary_dilation
 
-from utils import read_json, convert_to_torch_tensor
+from utils import read_json, convert_to_torch_tensor, convert_to_np_array, COLOR_LIST
 
 
 def extract_surface_voxels(voxels: np.array=None) -> np.array:
@@ -228,5 +229,170 @@ def sample_surface_torch(faces, vs, count):
     samples = sample_vector + tri_origins
 
     normals = torch.gather(normal, dim=1, index=face_index)[0]
-    
+
     return samples[0], keep_face_index.squeeze(), normals
+
+
+def assign_part_labels(points: torch.Tensor, part_occ: torch.Tensor, smooth: bool = True) -> np.array:
+    """Assigns each point to its most likely part via argmax over per-part occupancy.
+
+    Args:
+        points (torch.Tensor): query points, [1, N, 3] or [N, 3].
+        part_occ (torch.Tensor): per-part occupancy at each point, [1, N, P] or [N, P].
+        smooth (bool): if True, propagate labels from confidently-assigned points to
+            ambiguous ones via nearest-neighbor lookup.
+    Returns:
+        np.array: part label per point, [N].
+    """
+    if points.dim() == 3:
+        points = points.squeeze(0)
+    if part_occ.dim() == 3:
+        part_occ = part_occ.squeeze(0)
+
+    points_np = convert_to_np_array(tensor=points)
+    occ_np = convert_to_np_array(tensor=part_occ)
+    labels = np.argmax(occ_np, axis=-1)
+
+    if not smooth:
+        return labels
+
+    confident = np.max(occ_np, axis=-1) > 1e-2
+    if not np.any(confident):
+        return labels
+
+    tree = cKDTree(points_np[confident])
+    _, nearest_idx = tree.query(points_np)
+    return labels[confident][nearest_idx]
+
+
+def occupancy_grid_to_mesh(occ: torch.Tensor, density: int, mcubeth: float, interval: List[float] = [-1.0, 1.0]) -> trimesh.Trimesh:
+    """Runs marching cubes on an occupancy field evaluated on a uniform density^3 grid.
+
+    Args:
+        occ (torch.Tensor): occupancy values on the grid, [density**3].
+        density (int): number of samples per axis of the evaluation grid.
+        mcubeth (float): marching cubes iso-surface threshold.
+        interval (List[float]): [min, max] world-space extent the grid was sampled over,
+            used to rescale marching-cubes' grid-index vertices back to world coordinates.
+    Returns:
+        trimesh.Trimesh: extracted mesh, in world coordinates.
+    """
+    volume = occ.view(density, density, density).permute(1, 0, 2).cpu().detach().numpy()
+    verts, faces = mcubes.marching_cubes(volume, mcubeth)
+    verts = verts / (density - 1) * (interval[1] - interval[0]) + interval[0]
+    return trimesh.Trimesh(verts, faces)
+
+
+def hierarchical_occupancy_to_meshes(
+        shape_occ: torch.Tensor,
+        part_occ: Dict[str, torch.Tensor],
+        density: int,
+        mcubeth: float,
+        interval: List[float] = [-1.0, 1.0],
+    ) -> Tuple[List[trimesh.Trimesh], Dict[str, List[trimesh.Trimesh]], Dict[str, List[int]]]:
+    """Extracts the full-shape mesh and a per-part mesh at each hierarchy level via marching cubes.
+
+    Args:
+        shape_occ (torch.Tensor): full-shape occupancy on a density^3 grid, [density**3].
+        part_occ (Dict[str, torch.Tensor]): per-level per-part occupancy, {"level_i": [density**3, n_parts_i]}.
+        density (int): number of samples per axis of the evaluation grid.
+        mcubeth (float): marching cubes iso-surface threshold.
+        interval (List[float]): [min, max] world-space extent the grid was sampled over.
+    Returns:
+        Tuple[List[trimesh.Trimesh], Dict[str, List[trimesh.Trimesh]], Dict[str, List[int]]]:
+        the full-shape mesh (single-element list), the per-level list of part meshes, and their part labels.
+    """
+    shape_mesh = [occupancy_grid_to_mesh(occ=shape_occ, density=density, mcubeth=mcubeth, interval=interval)]
+
+    part_meshes, part_labels = {}, {}
+    for level, occ in part_occ.items():
+        volume = occ.view(density, density, density, -1).permute(1, 0, 2, 3).cpu().detach().numpy()
+        level_meshes, level_labels = [], []
+        for part_id in range(occ.shape[-1]):
+            verts, faces = mcubes.marching_cubes(volume[..., part_id], mcubeth)
+            verts = verts / (density - 1) * (interval[1] - interval[0]) + interval[0]
+            level_meshes.append(trimesh.Trimesh(verts, faces))
+            level_labels.append(part_id)
+        part_meshes[level] = level_meshes
+        part_labels[level] = level_labels
+
+    return shape_mesh, part_meshes, part_labels
+
+
+def write_colored_obj(vertices: np.array, faces: np.array, colors: List[str], filepath: str) -> None:
+    """Writes a mesh to .obj with a "r g b" color (in [0, 1]) appended to each vertex line."""
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    with open(filepath, 'w') as fout:
+        for vertex, color in zip(vertices, colors):
+            fout.write(f"v {vertex[0]} {vertex[1]} {vertex[2]} {color}\n")
+        for face in faces:
+            fout.write(f"f {face[0] + 1} {face[1] + 1} {face[2] + 1}\n")
+
+
+def write_part_meshes(
+        part_meshes: Dict[str, List[trimesh.Trimesh]],
+        part_labels: Dict[str, List[int]],
+        shape_mesh: List[trimesh.Trimesh],
+        out_dir: str,
+    ) -> None:
+    """Writes a color-coded, per-part mesh for each hierarchy level, plus the full shape mesh, as .obj files.
+
+    Args:
+        part_meshes (Dict[str, List[trimesh.Trimesh]]): per-level list of part meshes.
+        part_labels (Dict[str, List[int]]): per-level list of part labels, aligned with part_meshes.
+        shape_mesh (List[trimesh.Trimesh]): full-shape mesh (single-element list), or None.
+        out_dir (str): output directory.
+    Returns:
+        None
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    for level, meshes in part_meshes.items():
+        vertices, faces, colors = [], [], []
+        vertex_offset = 0
+        for mesh, label in zip(meshes, part_labels[level]):
+            if mesh.vertices.shape[0] == 0:
+                continue
+            color = [c / 255.0 for c in map(int, COLOR_LIST[label % len(COLOR_LIST)].split(" "))]
+            color_str = " ".join(map(str, color))
+            vertices.append(mesh.vertices)
+            faces.append(mesh.faces + vertex_offset)
+            colors.extend([color_str] * len(mesh.vertices))
+            vertex_offset += len(mesh.vertices)
+
+        if len(vertices) == 0:
+            continue
+
+        write_colored_obj(
+            vertices=np.concatenate(vertices, axis=0),
+            faces=np.concatenate(faces, axis=0),
+            colors=colors,
+            filepath=os.path.join(out_dir, f"parts_{level}.obj"),
+        )
+
+    if shape_mesh is not None and len(shape_mesh) > 0 and shape_mesh[0].vertices.shape[0] > 0:
+        shape_mesh[0].export(os.path.join(out_dir, "full_mesh.obj"))
+
+
+def save_labeled_point_cloud(points: np.array, labels: np.array, filepath: str) -> None:
+    """Writes an ASCII .ply point cloud, colored per-point by an integer part label.
+
+    Args:
+        points (np.array): point coordinates, [N, 3].
+        labels (np.array): part label per point, [N].
+        filepath (str): output .ply filepath.
+    Returns:
+        None
+    """
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    n_points = points.shape[0]
+    with open(filepath, 'w') as fout:
+        fout.write("ply\n")
+        fout.write("format ascii 1.0\n")
+        fout.write(f"element vertex {n_points}\n")
+        fout.write("property float x\nproperty float y\nproperty float z\n")
+        fout.write("property uchar red\nproperty uchar green\nproperty uchar blue\n")
+        fout.write("end_header\n")
+        for point, label in zip(points, labels):
+            color = COLOR_LIST[int(label) % len(COLOR_LIST)]
+            fout.write(f"{point[0]} {point[1]} {point[2]} {color}\n")

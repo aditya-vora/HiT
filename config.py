@@ -50,9 +50,9 @@ class ModelConfig:
     iou_mode: bool = False
     cd_mode: bool = False
 
-@dataclass 
-class DataConfig: 
-    data_dir: str = "/mnt/data/ava/hit/data/objaverse"
+@dataclass
+class DataConfig:
+    data_dir: str = "./data/objaverse"
     dataset_name: str = "objaverse"
     cats: str = "objaverse"
     shape_id: str = "1ab3abb5c090d9b68e940c4e64a94e1e"
@@ -61,8 +61,19 @@ class DataConfig:
     pts_per_shape: int = 4096
     npc: int = 2048
 
+@dataclass
+class EvalConfig:
+    gpu_id: int = 0
+    density: int = 64
+    nchunks: int = 8
+    mcubeth: float = 0.5
+    interval: List[float] = field(default_factory=lambda: [-1.0, 1.0])
+    n_surface_samples: int = 100000
+    fscore_threshold: float = 0.02
+    use_post_processing: bool = True
 
-def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
+
+def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig, EvalConfig]:
     parser = argparse.ArgumentParser(description="PyTorch HiT Training")
     
     parser.add_argument("--epochs", type=int, default=150, help="Number of epochs")
@@ -70,13 +81,13 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     parser.add_argument("--global-batch-size", type=int, default=24, help="Batch size")
     parser.add_argument("--pts-per-shape", type=int, default=4096, help="Number of points per shape.")
     parser.add_argument("--npc", type=int, default=2048, help="Number of points in the point cloud.")
-    parser.add_argument("--exp-dir", type=str, default="/mnt/data/ava/hit/per_cat_exp", help="Directory for saving experiments")
+    parser.add_argument("--exp-dir", type=str, default="./exp", help="Directory for saving experiments")
     parser.add_argument("--exp-name", type=str, default="sample", help="Directory for saving experiments")
     parser.add_argument("--random-seed", type=int, default=42, help="Random seed")
     parser.add_argument("--ckpt", type=str, default="", help="Directory for saving checkpoints")
     parser.add_argument("--max-grad-norm", type=float, default=1.0, help="Max gradient norm for gradient clipping")
 
-    parser.add_argument("--data-dir", type=str, default="/localhome/ava40/Desktop/HiT/data_src/shapenet/shapenetv2.1", help="Root directory of dataset")
+    parser.add_argument("--data-dir", type=str, default="./data_src/shapenet/shapenetv2.1", help="Root directory of dataset")
     parser.add_argument("--dataset-name", type=str, default="shapenet", help="Name of the dataset")
     parser.add_argument("--cats", type=str, default="all", help="Category of the object")
     parser.add_argument("--shape-id", type=str, default="1ab3abb5c090d9b68e940c4e64a94e1e", help="Shape ID of the object")
@@ -101,10 +112,17 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
     parser.add_argument("--ef-dim", type=int, default=256, help="Encoder dimension")
     parser.add_argument("--gf-dim", type=int, default=256, help="generator dimension")
     parser.add_argument("--model-type", type=str, default="hit-volume", help="Model name")
-    # parser.add_argument("--density", type=int, default=32, help="Density of the point cloud")
-    # parser.add_argument("--nchunks", type=int, default=8, help="Number of chunks")
-    # parser.add_argument("--mcubeth", type=int, default=0.5, help="Cube size")
-    # parser.add_argument("--interval", type=List[float], default=[-1,1] , help="Interval")
+
+    # evaluation params
+    parser.add_argument("--gpu-id", type=int, default=0, help="GPU to run evaluation on")
+    parser.add_argument("--density", type=int, default=64, help="Number of samples per axis of the evaluation grid")
+    parser.add_argument("--nchunks", type=int, default=8, help="Number of chunks to split the evaluation grid into")
+    parser.add_argument("--mcubeth", type=float, default=0.5, help="Marching cubes iso-surface threshold")
+    parser.add_argument("--interval", type=float, nargs=2, default=[-1.0, 1.0], help="Evaluation grid extent [min, max]")
+    parser.add_argument("--n-surface-samples", type=int, default=100000, help="Number of points sampled from the reconstructed mesh for Chamfer Distance")
+    parser.add_argument("--fscore-threshold", type=float, default=0.02, help="Distance threshold for the F-score")
+    parser.add_argument("--no-post-processing", dest="post_processing", action="store_false", help="Disable nearest-neighbor label smoothing when assigning part labels")
+    parser.set_defaults(post_processing=True)
 
     # loss params 
     parser.add_argument("--w-im-sample-loss", type=float, default=1.0, help="Weight for MLP occ decoder loss.")
@@ -176,4 +194,15 @@ def parse_args() -> Tuple[DataConfig, ModelConfig, TrainConfig, LossConfig]:
         n_parts=args.nparts,
     )
 
-    return (dataconfig, modelconfig, trainconfig, loss_config)
+    eval_config = EvalConfig(
+        gpu_id=args.gpu_id,
+        density=args.density,
+        nchunks=args.nchunks,
+        mcubeth=args.mcubeth,
+        interval=args.interval,
+        n_surface_samples=args.n_surface_samples,
+        fscore_threshold=args.fscore_threshold,
+        use_post_processing=args.post_processing,
+    )
+
+    return (dataconfig, modelconfig, trainconfig, loss_config, eval_config)

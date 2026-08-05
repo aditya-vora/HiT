@@ -13,7 +13,7 @@ EXP_DIR="exp"
 EXP_NAME="all_cats_exp"
 RANDOM_SEED=42
 
-DATA_DIR="/localhome/ava40/Desktop/HiT/data_src/shapenet/shapenetv2.1"
+DATA_DIR="./data_src/shapenet/shapenetv2.1"
 DATASET_NAME="shapenet"
 CATS="all"
 SPLITS=("train")

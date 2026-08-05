@@ -2,6 +2,7 @@ from __future__ import division, absolute_import, with_statement, print_function
 from setuptools import setup, find_packages
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 import glob
+import os
 
 try:
     import builtins
@@ -11,7 +12,7 @@ except:
 builtins.__POINTNET2_SETUP__ = True
 import pointnet2
 
-_ext_src_root = "/localhome/ava40/projects/hit/src/libs/pointnet2/rebuild/pointnet2/_ext"
+_ext_src_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pointnet2", "_ext")
 _ext_sources = glob.glob("{}/src/*.cpp".format(_ext_src_root)) + glob.glob(
     "{}/src/*.cu".format(_ext_src_root)
 )

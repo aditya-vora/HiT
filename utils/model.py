@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 import numpy as np
+from typing import Dict, List, Tuple
+
+from utils import sample_grid
 
 
 # UNet3D utils.
@@ -95,4 +98,48 @@ def convert_euler_angles_to_rotation_matrix(euler_angles: torch.Tensor, map_rang
         -sy, cy * sx, cy * cx], dim=-1)
 
     rotations = rearrange(rotations, 'b p (i j) -> b p i j', b=B, p=Np, i=3, j=3)
-    return rotations 
+    return rotations
+
+
+@torch.no_grad()
+def reconstruct_on_grid(
+        model: nn.Module,
+        pc: torch.Tensor,
+        density: int,
+        nchunks: int,
+        interval: List[float],
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    """Evaluates a HiT model's decoder on a dense uniform grid of query points.
+
+    The encoder is run once on the input point cloud; the grid is then chunked to
+    bound memory use, and the decoder is evaluated on each chunk in turn.
+
+    Args:
+        model (nn.Module): a HiT model exposing `.encoder` and `.decoder` submodules.
+        pc (torch.Tensor): input point cloud, [1, N, 3].
+        density (int): number of samples per axis of the evaluation grid.
+        nchunks (int): number of chunks to split the grid into.
+        interval (List[float]): [min, max] extent of the evaluation grid.
+    Returns:
+        Tuple[torch.Tensor, Dict[str, torch.Tensor]]: full-shape occupancy, [density**3],
+        and per-level part occupancy, {"level_i": [density**3, n_parts[i]]}.
+    """
+    grid_pts = sample_grid(density=density, interval=interval)
+    grid_chunks = torch.chunk(grid_pts, chunks=nchunks, dim=1)
+
+    feats = model.encoder(pc)
+    n_levels = model.decoder.num_active_blocks
+
+    shape_occ_chunks = []
+    part_occ_chunks = {f"level_{i}": [] for i in range(n_levels)}
+
+    for chunk in grid_chunks:
+        data = model.decoder(chunk, pc, feats, enc_type="volume")
+        shape_occ_chunks.append(data['all_convex_indicator'][..., :1])
+        for i in range(n_levels):
+            part_occ_chunks[f"level_{i}"].append(data['all_convex_part_indicator_hat'][f"level_{i}"])
+
+    shape_occ = torch.cat(shape_occ_chunks, dim=1).squeeze(0).squeeze(-1)
+    part_occ = {level: torch.cat(chunks, dim=1).squeeze(0) for level, chunks in part_occ_chunks.items()}
+
+    return shape_occ, part_occ

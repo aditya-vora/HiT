@@ -1,4 +1,4 @@
-import os 
+import os
 from typing import List, Dict, Tuple
 from glob import glob
 import numpy as np
@@ -6,6 +6,47 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import json
+
+
+COLOR_LIST = [
+    "255 0 0",     # Fiery Red
+    "255 255 0",   # Bright Yellow
+    "0 255 0",     # Bright Green
+    "0 255 255",   # Cyan
+    "0 51 102",    # Deep Blue
+    "102 51 153",  # Royal Purple
+    "255 51 204",  # Electric Pink
+    "255 165 0",   # Orange
+    "0 128 128",   # Teal
+    "128 0 0",     # Maroon
+    "128 128 0",   # Olive
+    "0 0 128",     # Navy
+    "218 112 214", # Orchid
+    "255 127 80",  # Coral
+    "106 90 205",  # Slate Blue
+    "135 206 235", # Sky Blue
+    "255 20 147",  # Deep Pink
+    "34 139 34",   # Forest Green
+    "70 130 180",  # Steel Blue
+    "188 143 143", # Rosy Brown
+    "95 158 160",  # Cadet Blue
+    "255 99 71",   # Tomato
+    "255 140 0",   # Dark Orange
+    "147 112 219", # Medium Purple
+    "30 144 255",  # Dodger Blue
+    "230 230 250", # Lavender
+    "47 79 79",    # Dark Slate Gray
+    "102 205 170", # Medium Aquamarine
+    "184 134 11",  # Dark Goldenrod
+    "240 128 128", # Light Coral
+    "123 104 238", # Medium Slate Blue
+    "0 250 154",   # Medium Spring Green
+    "199 21 133",  # Medium Violet Red
+    "72 61 139",   # Dark Slate Blue
+    "210 105 30",  # Chocolate
+    "0 206 209",   # Dark Turquoise
+    "138 43 226",  # Blue Violet
+]
 
 
 def break_path(path, delimiter="/") -> List[str]:
@@ -117,29 +158,10 @@ def map_indexs(indexs: torch.Tensor, pre_indexs: torch.Tensor, g_factor: int) ->
     return indexs
 
 
-def load_checkpoint_strip_prefix(model, checkpoint_path, prefix="model."):
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    stripped_state_dict = {
-        k[len(prefix):] if k.startswith(prefix) else k: v
-        for k, v in checkpoint.items()
-    }
-    return model.load_state_dict(stripped_state_dict, strict=False)
-
-
-def load_checkpoint(model:nn.Module, filename:str) -> None:
-    checkpoint = torch.load(filename, weights_only=False)
-    model.encoder.load_state_dict(checkpoint['encoder'])
-    model.decoder.load_state_dict(checkpoint['decoder'])
-    return
-
-
-def save_checkpoint(model:nn.Module, filename:str) -> None:
-    checkpoint = {
-        'encoder': model.encoder.state_dict(), 
-        'decoder': model.decoder.state_dict()
-    }
-    torch.save(obj=checkpoint, f=filename)
-    return
+def load_checkpoint(model: nn.Module, filename: str) -> None:
+    """Loads model weights from a checkpoint saved by train.py (a dict with a "model" key)."""
+    checkpoint = torch.load(filename, map_location="cpu")
+    model.load_state_dict(checkpoint["model"])
 
 
 def convert_weights_to_occ(weights: torch.Tensor, occ: torch.Tensor, nparts: int) -> torch.Tensor:

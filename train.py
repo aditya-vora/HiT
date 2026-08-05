@@ -229,5 +229,5 @@ def main(data_config: DataConfig, model_config: ModelConfig, train_config: Train
 
 
 if __name__ == "__main__":
-    dataconfig, modelconfig, trainconfig, lossconfig = parse_args()
+    dataconfig, modelconfig, trainconfig, lossconfig, _ = parse_args()
     main(data_config=dataconfig, model_config=modelconfig, train_config=trainconfig, loss_config=lossconfig)
